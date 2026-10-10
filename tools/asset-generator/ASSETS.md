@@ -47,6 +47,14 @@ updateAssets(scene, clock.elapsedTime, 1);
 `npm install` puis `npm run dev` ouvre le « Jardin des assets » : un diorama avec le jardin, un pâté de
 maisons de la ville et les territoires des gangs. Clique un nom pour zoomer dessus.
 
+## Planches de design
+
+`sheet.html` affiche une planche de design (vues de face, profil, dos, dessus, trois-quarts, gros plan sur
+le signe de gang, palette et notes) : `sheet.html?id=spider`, `?id=mantis_prieurs`, `?gang=nuee` ou
+`?lineup` (chaque espèce avec chaque signe de gang). Les PNG rendus sont dans `assets/designs/`.
+Pour les régénérer : `npx vite --port 4176` puis `node scripts/design-sheets.mjs ../../assets/designs`
+(avec `playwright-core` et un Chromium).
+
 ## Première série
 
 | Catégorie | Assets |
