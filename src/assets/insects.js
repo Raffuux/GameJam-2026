@@ -95,6 +95,10 @@ export function createFly() {
     walk(t, speed);
     for (const { pivot, side } of wings) pivot.rotation.z = side * Math.sin(t * 60) * 0.35 * (speed > 0 ? 1 : 0.15);
   };
+  root.userData.anchors = {
+    neck: { position: [0, 0.47, 0.25], radius: 0.17 },
+    back: { position: [0, 0.6, -0.32], size: 0.2 },
+  };
   return tag(root, 'fly', { category: 'insect', heightCm: 0.7, animated: true });
 }
 
@@ -123,6 +127,7 @@ export function createMantis() {
   head.add(skull);
   addEyes(head, { x: 0.36, y: 0.12, z: 0.05, r: 0.18, color: PALETTE.mantisDark });
   addAntennae(head, { x: 0.08, y: 0.2, z: 0.1, length: 2, material: dark });
+  pronotumPivot.name = 'mantis_pronotum';
   pronotumPivot.add(head);
   // Raptorial forelegs, folded in prayer.
   const arms = [];
@@ -145,6 +150,10 @@ export function createMantis() {
     head.rotation.y = Math.sin(t * 0.7) * 0.5;
     pronotumPivot.rotation.z = Math.sin(t * 1.3) * 0.06;
     for (const { arm, side } of arms) arm.rotation.x = Math.sin(t * 2 + side) * 0.05;
+  };
+  root.userData.anchors = {
+    neck: { parent: 'mantis_pronotum', position: [0, 0, 2.0], radius: 0.3 },
+    back: { position: [0, 1.95, -0.9], size: 0.55, tilt: -0.12 },
   };
   return tag(root, 'mantis', { category: 'insect', heightCm: 3.8, animated: true });
 }
@@ -175,6 +184,10 @@ export function createAnt({ color = PALETTE.ant } = {}) {
     { y: 0.3, z: -0.02, x: 0.06, reach: 0.6, spread: -0.6 },
   ], { radius: 0.025, material: body });
   root.userData.update = (t, speed = 1) => walk(t, speed * 1.4);
+  root.userData.anchors = {
+    neck: { position: [0, 0.36, 0.23], radius: 0.1 },
+    back: { position: [0, 0.53, -0.42], size: 0.16 },
+  };
   return tag(root, 'ant', { category: 'insect', heightCm: 0.5, animated: true });
 }
 
@@ -335,4 +348,41 @@ export function createCaterpillar({ segments = 11 } = {}) {
     });
   };
   return tag(root, 'caterpillar', { category: 'insect', heightCm: 0.9, animated: true });
+}
+
+// Garden spider, ~1.3 cm body. NPC spiders (and a base for the player model).
+export function createSpider({ color = PALETTE.spider } = {}) {
+  const root = new THREE.Group();
+  const body = mat(color, { roughness: 0.7 });
+  const dark = mat(PALETTE.black, { roughness: 0.4 });
+  const cephalo = blob(0.33, 0.24, 0.38, body);
+  cephalo.position.set(0, 0.42, 0.22);
+  const abdomen = blob(0.5, 0.42, 0.6, body);
+  abdomen.position.set(0, 0.58, -0.55);
+  abdomen.rotation.x = 0.2;
+  root.add(cephalo, abdomen);
+  // Eight eyes: two big front ones, six small around.
+  const eyes = [[0.08, 0.55, 0.55, 0.06], [-0.08, 0.55, 0.55, 0.06], [0.17, 0.56, 0.47, 0.035], [-0.17, 0.56, 0.47, 0.035],
+    [0.1, 0.62, 0.45, 0.03], [-0.1, 0.62, 0.45, 0.03], [0.2, 0.52, 0.42, 0.03], [-0.2, 0.52, 0.42, 0.03]];
+  for (const [x, y, z, r] of eyes) {
+    const eye = blob(r, r, r, dark, 0);
+    eye.position.set(x, y, z);
+    root.add(eye);
+  }
+  for (const side of [1, -1]) {
+    root.add(segment([side * 0.07, 0.36, 0.52], [side * 0.06, 0.18, 0.62], 0.05, body, 4));
+    root.add(segment([side * 0.15, 0.38, 0.5], [side * 0.25, 0.25, 0.8], 0.04, body, 4));
+  }
+  const walk = addLegs(root, [
+    { y: 0.4, z: 0.42, x: 0.2, reach: 1.25, spread: 0.9 },
+    { y: 0.4, z: 0.28, x: 0.26, reach: 1.15, spread: 0.3 },
+    { y: 0.4, z: 0.12, x: 0.26, reach: 1.05, spread: -0.25 },
+    { y: 0.4, z: 0.0, x: 0.22, reach: 1.2, spread: -0.8 },
+  ], { radius: 0.045, material: body, lift: 0.3, swing: 0.25 });
+  root.userData.update = (t, speed = 1) => walk(t, speed);
+  root.userData.anchors = {
+    neck: { position: [0, 0.48, -0.08], radius: 0.26 },
+    back: { position: [0, 0.98, -0.5], size: 0.42, tilt: 0.2 },
+  };
+  return tag(root, 'spider', { category: 'insect', heightCm: 1, animated: true });
 }

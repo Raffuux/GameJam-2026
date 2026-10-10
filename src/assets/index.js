@@ -4,10 +4,12 @@
 import * as nature from './nature.js';
 import * as objects from './objects.js';
 import * as insects from './insects.js';
+import * as gangs from './gangs.js';
 
 export * from './nature.js';
 export * from './objects.js';
 export * from './insects.js';
+export * from './gangs.js';
 export { PALETTE } from './common.js';
 
 export const CATALOG = [
@@ -33,7 +35,19 @@ export const CATALOG = [
   { id: 'beetle', label: 'Scarabée rhinocéros', category: 'insect', create: insects.createBeetle },
   { id: 'bee', label: 'Abeille', category: 'insect', create: insects.createBee },
   { id: 'caterpillar', label: 'Chenille', category: 'insect', create: insects.createCaterpillar },
+  { id: 'spider', label: 'Araignée', category: 'insect', create: insects.createSpider },
 ];
+
+// Gang members, flags, graffiti tags and territory markers for each gang.
+const memberFactory = { spider: insects.createSpider, mantis: insects.createMantis, fly: insects.createFly, ant: insects.createAnt };
+for (const gang of Object.values(gangs.GANGS)) {
+  CATALOG.push(
+    { id: `${gang.species}_${gang.id}`, label: `Membre · ${gang.label}`, category: 'gang', gang: gang.id, create: (o) => gangs.applyGang(memberFactory[gang.species](o), gang.id) },
+    { id: `flag_${gang.id}`, label: `Drapeau · ${gang.label}`, category: 'gang', gang: gang.id, create: () => gangs.createGangFlag(gang.id) },
+    { id: `tag_${gang.id}`, label: `Tag · ${gang.label}`, category: 'gang', gang: gang.id, create: () => gangs.createGangTag(gang.id) },
+    { id: `marker_${gang.id}`, label: `Borne · ${gang.label}`, category: 'gang', gang: gang.id, create: (o) => gangs.createTerritoryMarker(gang.id, o) },
+  );
+}
 
 export function createAsset(id, options) {
   const entry = CATALOG.find((e) => e.id === id);

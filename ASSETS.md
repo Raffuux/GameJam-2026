@@ -31,11 +31,34 @@ clique un nom pour zoomer dessus.
 |---|---|
 | Végétation | touffe d'herbe, trèfle, pissenlit, champignon, caillou, brindille, feuille morte, gland |
 | Objets du quotidien | canette (debout / couchée), capsule, crayon, pièce, brique de jouet, trombone |
-| Insectes animés | mouche, mante religieuse, fourmi, coccinelle, scarabée rhinocéros, abeille, chenille |
+| Insectes animés | mouche, mante religieuse, fourmi, coccinelle, scarabée rhinocéros, abeille, chenille, araignée |
+| Gangs | un membre habillé, un drapeau, un tag graffiti et une borne de territoire par gang |
+
+## Gangs et territoires
+
+Définis dans `src/assets/gangs.js` (`GANGS`). Deux gangs affichent leur couleur avec un bandana,
+deux portent un tatouage sur le dos.
+
+| Gang | Espèce | Signature | Couleur | Emblème |
+|---|---|---|---|---|
+| Les Tisseuses | araignée | tatouage | violet | toile |
+| Les Prieurs | mante religieuse | couleurs (bandana) | rouge | griffes en V |
+| La Nuée | mouche | couleurs (bandana) | bleu | œil composé |
+| La Colonie | fourmi | tatouage | orange | chevrons |
+
+```js
+import { createMantis, applyGang, createGangFlag, createGangTag, createTerritoryMarker } from './src/assets/index.js';
+const soldat = applyGang(createMantis(), 'prieurs');
+const drapeau = createGangFlag('prieurs');      // flotte avec updateAssets
+const tag = createGangTag('nuee', { size: 4 }); // à coller sur une canette, un caillou...
+const borne = createTerritoryMarker('tisseuses');
+```
+
+`applyGang` marche sur toute créature qui a des `userData.anchors` (araignée, mante, mouche, fourmi).
 
 ## Ce qui manque encore
 
-- L'araignée joueuse et ses toiles (fils, toile terminée, toile en construction).
+- Les toiles d'araignée (fil, toile en construction, toile terminée) et une version joueur de l'araignée.
 - « Véhicules » façon GTA : insectes montables ou PNJ qui conduisent (coccinelle voiture, scarabée camion, chenille bus).
 - Gros repères de map : arrosoir, tuyau d'arrosage, pot de fleurs, bac à sable, ballon, chaussure, pelouse tondue vs friche.
 - Décor de sol en masse : tapis d'herbe instancié, terre, flaques, gouttes de rosée.

@@ -40,6 +40,7 @@ export const PALETTE = {
   beeYellow: 0xf2b21b,
   caterpillar: 0x7cc242,
   caterpillarBand: 0xf4d23c,
+  spider: 0x4a3426,
   white: 0xf4f1ea,
   wing: 0xdfeff7,
 };

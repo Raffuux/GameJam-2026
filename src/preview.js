@@ -81,11 +81,23 @@ const layout = {
   beetle: [[8, -8, -0.7]],
   bee: [[-14, -1, 0.6]],
   caterpillar: [[-10, -8, 0.9]],
+  spider: [[2, 12, -0.4]],
 };
+
+// One small territory per gang, in a row behind the yard.
+['tisseuses', 'prieurs', 'nuee', 'colonie'].forEach((gang, i) => {
+  const cx = -45 + i * 30;
+  const cz = -45;
+  const species = { tisseuses: 'spider', prieurs: 'mantis', nuee: 'fly', colonie: 'ant' }[gang];
+  layout[`flag_${gang}`] = [[cx, cz, 0]];
+  layout[`marker_${gang}`] = [[cx + 7, cz + 3, 0.3]];
+  layout[`tag_${gang}`] = [[cx - 7, cz + 3, 0.3]];
+  layout[`${species}_${gang}`] = [[cx, cz + 7, 0]];
+});
 
 const focus = {};
 const list = document.getElementById('list');
-const groups = { nature: 'Végétation', object: 'Objets du quotidien', insect: 'Insectes' };
+const groups = { nature: 'Végétation', object: 'Objets du quotidien', insect: 'Insectes', gang: 'Gangs et territoires' };
 let lastCat = null;
 CATALOG.forEach((entry, idx) => {
   const spots = layout[entry.id] ?? [[idx * 4, 0, 0]];
