@@ -8,6 +8,8 @@ const FollowCamera := preload("res://scripts/player/follow_camera.gd")
 const Hud := preload("res://scripts/ui/hud.gd")
 const MapImage := preload("res://scripts/ui/map_image.gd")
 const FilmLook := preload("res://scripts/fx/film_look.gd")
+const HeroModel := preload("res://scripts/player/hero_model.gd")
+const IntroCutscene := preload("res://scripts/cinematics/intro_cutscene.gd")
 
 const COINS_PER_ZONE := 5
 const COIN_VALUE := 100
@@ -15,6 +17,7 @@ const COIN_VALUE := 100
 var city: City
 var spider: Spider
 var cam: FollowCamera
+var cutscene: Node = null
 var hud: Hud
 var coins: Array = []
 var money := 0
@@ -32,6 +35,7 @@ func _ready() -> void:
 	spider.builder = b
 	add_child(spider)
 	spider.global_position = Layout.SPAWN + Vector3(0, 2, 0)
+	HeroModel.attach(spider)
 
 	cam = FollowCamera.new()
 	add_child(cam)
@@ -209,6 +213,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			hud.hide_intro()
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 			current_zone = ""
+			_start_cutscene()
+		return
+	if cutscene != null:
 		return
 	if event.is_action_pressed("map") or (event is InputEventKey and event.pressed and event.physical_keycode == KEY_ESCAPE and hud.fullmap.visible):
 		var open: bool = hud.toggle_map()
@@ -219,16 +226,24 @@ func _unhandled_input(event: InputEvent) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
+## La première cinématique, jouée après l'écran titre. Le joueur reprend la main à la fin.
+func _start_cutscene() -> void:
+	cutscene = IntroCutscene.new()
+	add_child(cutscene)
+	cutscene.finished.connect(func(): cutscene = null)
+	cutscene.play(spider, cam, hud, city)
+
+
 func _process(dt: float) -> void:
 	t += dt
 	spider.cam_yaw = cam.yaw
-	spider.set_physics_process(not hud.intro_visible() and not hud.fullmap.visible)
+	spider.set_physics_process(not hud.intro_visible() and not hud.fullmap.visible and cutscene == null)
 	for c in coins:
 		c.rotation.y = t * 2.0
 	_move_gang_members()
 	var p := spider.global_position
 	var zone := Layout.zone_at(p.x, p.z)
-	if zone != current_zone and not hud.intro_visible():
+	if zone != current_zone and not hud.intro_visible() and cutscene == null:
 		current_zone = zone
 		hud.show_zone(zone)
 	hud.update_frame(dt, spider, cam.yaw, spider._yaw, spider.silk_length(), spider.MAX_SILK)
@@ -248,6 +263,10 @@ func _run_test_mode(args: PackedStringArray) -> void:
 	hud.hide_intro()
 	if "--overview" in args:
 		await _overview_shots(out)
+		get_tree().quit()
+		return
+	if "--cutscene" in args:
+		await _cutscene_shots(out)
 		get_tree().quit()
 		return
 	# [nom, x, z, y (ou -1 = surface), yaw caméra, pitch, distance]
@@ -386,3 +405,16 @@ func _overview_shots(out: String) -> void:
 		var file := "repaire-%d" % k
 		get_viewport().get_texture().get_image().save_png(out + "/" + file + ".png")
 		print("shot ", file, " ", l["name"])
+
+
+## Images de la cinématique, prises à intervalles réguliers (pour vérifier le cadrage).
+func _cutscene_shots(out: String) -> void:
+	_start_cutscene()
+	var k := 0
+	while cutscene != null and k < 200:
+		await get_tree().create_timer(0.5).timeout
+		get_viewport().get_texture().get_image().save_png(out + "/cine-%02d.png" % k)
+		print("shot cine-%02d" % k)
+		k += 1
+	await get_tree().create_timer(1.5).timeout
+	get_viewport().get_texture().get_image().save_png(out + "/cine-fin.png")

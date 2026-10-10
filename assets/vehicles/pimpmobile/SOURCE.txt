@@ -1,0 +1,35 @@
+Low Poly Car - Pimpmobile by Devil's Workshop
+Source: https://devilsworkshop.itch.io/low-poly-car-pimpmobile
+Downloaded: 2026-10-10 (name-your-own-price/free download)
+Archive: low_poly_car_pimpMobile_v01.zip (downloaded as car_pimpMobile_v01.zip)
+
+source/pimpmobile.blend is the one editable car model. It contains a Body and
+four separate wheels. The original and white UV color atlases are in source/;
+the blend also packs the images. source/.gdignore prevents Godot from importing
+the Blender source. The original FBX conversion had duplicate geometry and
+incorrect custom normals; this blend retains one body and repaired normals.
+
+PaintAtlas is the Body material for paintable faces. In Blender, change its
+"Body Paint Color" node swatch to preview another color. The PAINT_VARIATIONS
+text block lists the five palette choices. Add the interior to this blend.
+After editing, export the shared game model with:
+
+  blender -b --factory-startup --python source/export_pimpmobile.py
+
+Run that command from the pimpmobile directory, or pass the absolute script
+path from elsewhere. It updates pimpmobile.glb, the only game mesh. The Godot
+scenes choose paint colors on its PaintAtlas surface:
+
+  pimpmobile_glass.tscn                 original brown
+  variants/pimpmobile_crimson_glass.tscn
+  variants/pimpmobile_cobalt_glass.tscn
+  variants/pimpmobile_emerald_glass.tscn
+  variants/pimpmobile_pearl_glass.tscn
+
+These five scenes all reference pimpmobile.glb. They apply
+window_glass.gdshader to the WindowAtlas surface for transmissive windows.
+The GLB alone retains an opaque, portable window material. Godot extracts two
+atlas images beside the GLB during import; these are needed by its materials.
+
+The listing and archive did not contain an explicit license statement or license
+file. Confirm reuse and redistribution terms with the creator before shipping.
