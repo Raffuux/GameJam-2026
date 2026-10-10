@@ -26,7 +26,7 @@ from mathutils.bvhtree import BVHTree
 
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[-2:]
 SRC, OUT = argv[0], argv[1]
-VARIANTS = argv[2:] or [f"{kind}_{c}" for kind in ("durag", "bandana", "cap") for c in ("green", "purple", "red", "blue", "black")] + ["joint", "skull", "girl"]
+VARIANTS = argv[2:] or [f"{kind}_{c}" for kind in ("durag", "bandana", "cap", "capback") for c in ("green", "purple", "red", "blue", "black")] + ["joint", "skull", "girl"]
 
 
 # --------------------------------------------------------------------------- helpers
@@ -537,12 +537,14 @@ def girl(rig, body):
             finish(bpy.context.active_object, black, rig, "body", f"lash_{round(c.x, 2)}_{j}")
 
 
-def cap(rig, body, color="green"):
-    """Baseball cap worn forward: a dome over the carapace, a flat brim over the eyes,
-    a top button and a white letter on the front panel."""
+def cap(rig, body, color="green", back=False):
+    """Baseball cap: a dome over the carapace, a flat brim over the eyes, a top button
+    and a white letter on the front panel. `back` turns it around (brim and letter
+    at the rear)."""
+    s = -1 if back else 1
     felt = material(f"cap_{color}", shades(COLORS[color], (0.5, 0.8, 1.0, 1.15)), rough=0.8, seed=31)
     white = material("cap_logo", hexes("d8d4ca", "ece8de", "f8f6f0"), rough=0.6, seed=32)
-    cy, cz, rx, ry, rz = 0.2, 0.74, 0.31, 0.31, 0.25
+    cy, cz, rx, ry, rz = 0.25, 0.66, 0.31, 0.3, 0.26
     crown = add("uv_sphere", segments=32, ring_count=16, radius=1, location=(0, cy, cz))
     crown.scale = (rx, ry, rz)
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
@@ -557,14 +559,15 @@ def cap(rig, body, color="green"):
     bpy.ops.object.modifier_apply(modifier="thick")
     bpy.ops.object.shade_smooth()
     finish(crown, felt, rig, "body", "cap_crown")
-    # Half-disc brim from the front of the dome, tilted down and curved at the sides.
+    # Half-disc brim from the dome, tilted down (up when worn backwards) and curved at the sides.
     bm = bmesh.new()
-    y0, depth, half = cy + ry * 0.8, 0.26, 0.27
+    y0, depth, half = ry * 0.8, 0.32, 0.28
     pts = [(half * math.cos(t), depth * math.sin(t)) for t in (math.pi * k / 16 for k in range(17))]
     verts = []
     for x, d in pts:
-        verts.append(bm.verts.new((x, y0 + d, cz - 0.01 + 0.45 * d - 0.04 * (x / half) ** 2)))
-    bm.faces.new(verts)
+        lift = 0.1 * d if back else -0.12 * max(0, d - 0.1)
+        verts.append(bm.verts.new((x, cy + s * (y0 + d), cz + 0.01 + lift - 0.05 * (x / half) ** 2)))
+    bm.faces.new(verts[::s])
     bmesh.ops.triangulate(bm, faces=bm.faces[:])
     uv = bm.loops.layers.uv.new("UVMap")
     for f in bm.faces:
@@ -597,9 +600,9 @@ def cap(rig, body, color="green"):
     font.align_y = "CENTER"
     logo = bpy.data.objects.new("cap_logo", font)
     bpy.context.collection.objects.link(logo)
-    logo.location = (0, cy + dy + 0.022 * math.sin(tilt), cz + dz + 0.022 * math.cos(tilt))
+    logo.location = (0, cy + s * (dy + 0.022 * math.sin(tilt)), cz + dz + 0.022 * math.cos(tilt))
     logo.rotation_mode = "ZYX"  # spin the letter about its normal first, then tilt
-    logo.rotation_euler = (-tilt, 0, math.pi)
+    logo.rotation_euler = (-s * tilt, 0, math.pi if s > 0 else 0)
     bpy.ops.object.select_all(action="DESELECT")
     logo.select_set(True)
     bpy.context.view_layer.objects.active = logo
@@ -608,7 +611,7 @@ def cap(rig, body, color="green"):
     finish(logo, white, rig, "body", "cap_logo")
 
 
-BUILDERS = {"durag": durag, "bandana": bandana, "cap": cap, "joint": joint, "skull": skull, "girl": girl}
+BUILDERS = {"durag": durag, "bandana": bandana, "cap": cap, "capback": lambda r, b, c: cap(r, b, c, back=True), "joint": joint, "skull": skull, "girl": girl}
 
 for name in VARIANTS:
     rig, body = load()

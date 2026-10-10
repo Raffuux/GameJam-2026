@@ -9,12 +9,13 @@ de marcher.
 |---|---|---|
 | durag | `jumping_spider_durag_<couleur>` | durag satiné avec un nœud et deux longues queues sur l'abdomen |
 | bandana | `jumping_spider_bandana_<couleur>` | bandana paisley noué sur le bas du visage, façon Grove Street |
-| cap | `jumping_spider_cap_<couleur>` | casquette portée devant, assez haut pour dégager les yeux : dôme, visière relevée, bouton et « S » blanc |
+| cap | `jumping_spider_cap_<couleur>` | casquette portée devant : dôme, visière sur les yeux, bouton et « S » blanc |
+| capback | `jumping_spider_capback_<couleur>` | la même casquette portée à l'envers, visière et « S » vers l'arrière |
 | joint | `jumping_spider_joint` | gros joint conique dans les chélicères, bout incandescent, fumée et petite lumière |
 | skull | `jumping_spider_skull` | tatouages tête de mort noir et gris peints dans l'atlas pixel-art (abdomen + carapace) |
 | girl | `jumping_spider_girl` | talons aiguilles rouges aux 8 pattes, yeux agrandis, longs cils recourbés |
 
-Durag, bandana et casquette existent en 5 couleurs : `green`, `purple`, `red`, `blue`, `black`
+Durag, bandana et casquette (à l'endroit et à l'envers) existent en 5 couleurs : `green`, `purple`, `red`, `blue`, `black`
 (planche `jumping_spider_couleurs.png`). Ajouter une couleur : une entrée dans `COLORS`.
 
 Les fichiers sont dans `assets/spider_variants/` : un `.blend` par variante (Godot l'importe
