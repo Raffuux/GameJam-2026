@@ -47,7 +47,7 @@ static func render(footprints: Array, puddle_center: Vector3, puddle_r: float) -
 			var wz := (y + 0.5) * 2.0 / PX_PER_UNIT - Layout.HALF
 			var z := Layout.zone_at(wx, wz)
 			row.append(z)
-			zones.set_pixel(x, y, Color("3a3b3e").lerp(Layout.ZONES[z]["color"], 0.42))
+			zones.set_pixel(x, y, Color("4a5530").lerp(Layout.ZONES[z]["color"], 0.42))
 		ids.append(row)
 	# frontières : un liseré clair là où le quartier change
 	for y in half:
@@ -57,12 +57,12 @@ static func render(footprints: Array, puddle_center: Vector3, puddle_r: float) -
 				zones.set_pixel(x, y, Color(1, 1, 1, 0.9))
 	zones.resize(SIZE, SIZE, Image.INTERPOLATE_NEAREST)
 	var img := zones
-	# rues : trottoir clair puis chaussée sombre
+	# chemins : bas-côtés en gravier puis terre battue
 	for pass_i in 2:
 		for road in Layout.ROADS:
 			var hw: float = road[1] / 2.0
 			var r := (hw + 9.0 if pass_i == 0 else hw) * PX_PER_UNIT
-			var color := Color("b9b4a8") if pass_i == 0 else Color("2a2b2e")
+			var color := Color("a89a7c") if pass_i == 0 else Color("6e5236")
 			for p in Layout.sample_road(road[2], 3.0):
 				_disc(img, to_px(p.x, p.y), r, color)
 	var order := {"park": 0, "water": 1, "sidewalk": 2, "building": 3, "landmark": 4}

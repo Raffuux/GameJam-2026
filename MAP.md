@@ -13,8 +13,10 @@ Projet **Godot 4.4** (renderer Compatibility, exportable en web). Ouvrir `projec
 
 ## Les quartiers et les gangs
 
-Pas de grille : 14 rues courbes (avenues, boulevard en diagonale, ruelles tortueuses) avec trottoirs,
-passages piétons à l'entrée des carrefours et pointillés au centre. Les immeubles sont alignés le long des rues,
+Pas de grille : 14 chemins de terre battue courbes (avenues, boulevard en diagonale, ruelles tortueuses)
+bordés de gravier, avec des ornières et des pas japonais en cailloux plats à l'entrée des carrefours.
+Entre les bâtiments pousse un terrain vague : près de 10 000 touffes d'herbe, plus des trèfles, des pissenlits,
+des feuilles mortes et des champignons. Les immeubles sont alignés le long des rues,
 façade vers la chaussée, puis l'arrière des îlots est rempli. Les quartiers ont des frontières qui serpentent ;
 quand une rue entre dans un territoire, une borne et une bande de peinture aux couleurs du gang le signalent.
 Chaque quartier est teinté de la couleur de son gang au sol, sur le radar et sur la carte (touche **M**).

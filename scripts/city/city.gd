@@ -52,6 +52,7 @@ func build(parent: Node3D) -> Builder:
 	_infill_buildings()
 	_street_props()
 	_territory_markers()
+	_vegetation()
 	_tisseuses_webs()
 	_backdrop()
 	return b
@@ -101,14 +102,14 @@ func road_clearance(p: Vector2, skip_road: int = -1, radius: float = 120.0) -> A
 
 # ---------- Sol et rues ----------
 
-## Le sol : du béton teinté par quartier, avec des frontières qui se fondent.
+## Le sol : de l'herbe rase et de la terre, teintées par quartier, avec des frontières qui se fondent.
 func _ground() -> void:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var n := 100
 	var span := Layout.HALF + 40.0
 	var step := span * 2.0 / n
-	var base := Color("8d8a84")
+	var base := Color("7a8048")
 	var colors := {}
 	for j in n + 1:
 		for i in n + 1:
@@ -117,7 +118,7 @@ func _ground() -> void:
 			var col := Color(0, 0, 0)
 			# moyenne sur quelques points voisins : frontières adoucies
 			for o: Vector2 in [Vector2(0, 0), Vector2(14, 0), Vector2(-14, 0), Vector2(0, 14), Vector2(0, -14)]:
-				col += base.lerp(Layout.ZONES[Layout.zone_at(x + o.x, z + o.y)]["color"], 0.28) / 5.0
+				col += base.lerp(Layout.ZONES[Layout.zone_at(x + o.x, z + o.y)]["color"], 0.22) / 5.0
 			col.a = 1.0
 			colors[Vector2i(i, j)] = col
 	for j in n:
@@ -127,7 +128,7 @@ func _ground() -> void:
 				st.set_color(colors[v])
 				st.set_normal(Vector3.UP)
 				st.add_vertex(Vector3(-span + v.x * step, 0, -span + v.y * step))
-	var m := Tex.world_mat(Tex.noise(Color("b9b6b0"), Color("e6e3dc"), 0.07), Color.WHITE, 1.0 / 50.0, 0.95)
+	var m := Tex.world_mat(Tex.noise(Color("8e9a5a"), Color("d2c79a"), 0.06), Color.WHITE, 1.0 / 70.0, 0.95)
 	m.vertex_color_use_as_albedo = true
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	var mi := MeshInstance3D.new()
@@ -173,8 +174,9 @@ func _roads() -> void:
 		var hw: float = road[1] / 2.0
 		_ribbon(walk, pts, hw + SIDEWALK_W - 1.5, SIDEWALK_Y, 1.5, 0.0)
 		_ribbon(asphalt_st, pts, hw - 0.6, ROAD_Y, 0.6, SIDEWALK_Y - 0.05)
-	var sidewalk_mat := Tex.world_mat(Tex.noise(Color("a9a59c"), Color("c4c0b6"), 0.12), Color.WHITE, 1.0 / 30.0, 0.95)
-	var asphalt_mat := Tex.world_mat(Tex.noise(Color("34363a"), Color("4a4c50"), 0.09), Color.WHITE, 1.0 / 60.0, 0.95)
+	# bas-côtés en gravier et chemins en terre battue : la ville est faite par des insectes
+	var sidewalk_mat := Tex.world_mat(Tex.noise(Color("7d6f55"), Color("a89a7c"), 0.3), Color.WHITE, 1.0 / 25.0, 0.95)
+	var asphalt_mat := Tex.world_mat(Tex.noise(Color("5e4630"), Color("8c6c4a"), 0.11), Color.WHITE, 1.0 / 45.0, 1.0)
 	for pair in [[walk, sidewalk_mat], [asphalt_st, asphalt_mat]]:
 		var st: SurfaceTool = pair[0]
 		var mesh := st.commit()
@@ -194,57 +196,67 @@ func _roads() -> void:
 	_markings()
 
 
-## Marquages : pointillés jaunes au centre, passages piétons à l'entrée des carrefours.
+## Ornières dans la terre, et des pas japonais en cailloux plats à l'entrée des carrefours.
 func _markings() -> void:
-	var dashes := []
-	var stripes := []
-	var y := ROAD_Y + 0.08
+	var ruts := []
+	var stones := []
+	var y := ROAD_Y + 0.06
 	for ri in Layout.ROADS.size():
 		var road: Array = Layout.ROADS[ri]
 		var hw: float = road[1] / 2.0
-		var pts := Layout.sample_road(road[2], 2.0)
-		var dist := 0.0
-		var next_dash := 10.0
+		var pts := Layout.sample_road(road[2], 3.0)
 		var was_crossing := false
 		for k in range(1, pts.size() - 1):
 			var p := pts[k]
 			var t := (pts[k + 1] - pts[k - 1]).normalized()
+			var nrm := Vector2(-t.y, t.x)
 			var ang := atan2(t.x, t.y)
-			dist += pts[k].distance_to(pts[k - 1])
 			var other: float = road_clearance(p, ri, 60.0)[0]
 			var crossing := other < 2.0
-			if dist >= next_dash:
-				next_dash += 20.0
-				if road[1] >= 26.0 and other > 8.0:
-					dashes.append(Transform3D(Basis(Vector3.UP, ang), Vector3(p.x, y, p.y)))
-			# passage piéton juste avant d'entrer dans un carrefour (ou juste après en être sorti)
+			if other > 4.0 and road[1] >= 18.0:
+				for side: float in [-1.0, 1.0]:
+					var q := p + nrm * side * hw * 0.38 + nrm * sin(k * 0.37 + ri) * 0.8
+					ruts.append(Transform3D(Basis(Vector3.UP, ang), Vector3(q.x, y, q.y)))
 			if road[1] >= 18.0 and crossing != was_crossing and k > 3:
-				var back := -t * 10.0 if crossing else t * 10.0
-				var nrm := Vector2(-t.y, t.x)
-				var w := -hw + 3.0
-				while w <= hw - 3.0:
-					var q := p + back + nrm * w
-					stripes.append(Transform3D(Basis(Vector3.UP, ang), Vector3(q.x, y, q.y)))
-					w += 5.0
+				var back := -t * 9.0 if crossing else t * 9.0
+				var w := -hw + 4.0
+				while w <= hw - 4.0:
+					var q := p + back + nrm * w + Vector2(b.rand(-1.0, 1.0), b.rand(-1.0, 1.0))
+					stones.append(Transform3D(Basis(Vector3.UP, b.rand(0, TAU)).scaled(Vector3(b.rand(0.8, 1.2), 1.0, b.rand(0.8, 1.2))), Vector3(q.x, y, q.y)))
+					w += 6.5
 			was_crossing = crossing
-	_multimesh(Vector3(1.2, 0.1, 10.0), b.mat(Color("e8d36a"), 0.7), dashes)
-	_multimesh(Vector3(2.6, 0.1, 10.0), b.mat(Color("eeeeee"), 0.7), stripes)
+	_multimesh(Vector3(2.4, 0.1, 3.4), b.mat(Color("4a3523"), 1.0), ruts)
+	var pebble := SphereMesh.new()
+	pebble.radius = 2.4
+	pebble.height = 1.0
+	pebble.radial_segments = 9
+	pebble.rings = 3
+	_multimesh_mesh(pebble, b.mat(Color("a9a296"), 0.9), stones)
 
 
 func _multimesh(size: Vector3, material: Material, transforms: Array) -> void:
 	var bm := BoxMesh.new()
 	bm.size = size
+	_multimesh_mesh(bm, material, transforms)
+
+
+func _multimesh_mesh(bm: Mesh, material: Material, transforms: Array, colors: Array = []) -> MultiMeshInstance3D:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = not colors.is_empty()
 	mm.mesh = bm
 	mm.instance_count = transforms.size()
 	for k in transforms.size():
 		mm.set_instance_transform(k, transforms[k])
+		if mm.use_colors:
+			mm.set_instance_color(k, colors[k])
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
-	mmi.material_override = material
+	if material:
+		mmi.material_override = material
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	b.root.add_child(mmi)
+	return mmi
 
 
 # ---------- Placement des immeubles ----------
@@ -805,3 +817,151 @@ func _backdrop() -> void:
 		var h := b.rand(1200, 6000) if pos.z < 0 else b.rand(800, 3000)
 		var m := human_win if k % 3 else Tex.world_mat(Tex.windows(0.15, k), Color(b.pick(["6f8299", "7c8a99", "9a9182", "56657a"])), 1.0 / 260.0)
 		b.box(pos, Vector3(w, h, w * b.rand(0.6, 1.2)), m, false, a, null, "", false)
+
+
+# ---------- Végétation ----------
+
+## Une touffe d'herbe : quelques brins effilés et courbés, plus clairs à la pointe (hauteur 1).
+static func _tuft_mesh() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	for k in 7:
+		var a := k / 7.0 * TAU + rng.randf_range(-0.3, 0.3)
+		var dir := Vector3(cos(a), 0, sin(a))
+		var side := Vector3(-dir.z, 0, dir.x) * 0.09
+		var base := dir * rng.randf_range(0.0, 0.15)
+		var h := rng.randf_range(0.7, 1.0)
+		var bend := dir * rng.randf_range(0.25, 0.5)
+		var mid := base + bend * 0.4 + Vector3(0, h * 0.55, 0)
+		var tip := base + bend + Vector3(0, h, 0)
+		var dark := Color(0.55, 0.62, 0.3)
+		var light := Color(0.85, 0.88, 0.5)
+		var pts := [[base - side, dark], [base + side, dark], [mid + side * 0.6, dark.lerp(light, 0.5)], [mid - side * 0.6, dark.lerp(light, 0.5)], [tip, light]]
+		for tri in [[0, 1, 2], [0, 2, 3], [3, 2, 4]]:
+			for i in tri:
+				st.set_color(pts[i][1])
+				st.set_normal(Vector3.UP)
+				st.add_vertex(pts[i][0])
+	return st.commit()
+
+
+## Premier maillage d'un modèle .glb, ramené à une hauteur de 1 (ou une taille de 1 pour un objet plat)
+## et posé au sol, pour une MultiMesh.
+static func _model_mesh(name: String, by_size: bool = false) -> Array:
+	var path := "res://assets/models/%s.glb" % name
+	if not ResourceLoader.exists(path):
+		return []
+	var inst: Node3D = load(path).instantiate()
+	var found := inst.find_children("*", "MeshInstance3D", true, false)
+	if found.is_empty():
+		inst.free()
+		return []
+	var mi: MeshInstance3D = found[0]
+	var aabb := mi.get_aabb()
+	var mesh: Mesh = mi.mesh
+	inst.free()
+	var ref := maxf(aabb.size.x, maxf(aabb.size.y, aabb.size.z)) if by_size else aabb.size.y
+	if ref < 0.0001:
+		return []
+	var s := 1.0 / ref
+	var fix := Transform3D(Basis().scaled(Vector3.ONE * s), Vector3(-aabb.get_center().x * s, -aabb.position.y * s, -aabb.get_center().z * s))
+	return [mesh, fix]
+
+
+func _building_grid() -> Dictionary:
+	var grid := {}
+	for f in _placed:
+		var r: float = Vector2(f["hx"], f["hz"]).length()
+		var c: Vector2 = f["c"]
+		for i in range(floori((c.x - r) / CELL), floori((c.x + r) / CELL) + 1):
+			for j in range(floori((c.y - r) / CELL), floori((c.y + r) / CELL) + 1):
+				var key := Vector2i(i, j)
+				if not grid.has(key):
+					grid[key] = []
+				grid[key].append(f)
+	return grid
+
+
+func _free_ground(p: Vector2, grid: Dictionary, margin: float) -> bool:
+	if absf(p.x) > Layout.HALF - 4.0 or absf(p.y) > Layout.HALF - 4.0:
+		return false
+	if p.distance_to(Vector2(puddle_center.x, puddle_center.z)) < Layout.PUDDLE_R + 12.0:
+		return false
+	if p.distance_to(Layout.SITES["bank"]["pos"]) < 100.0:
+		return false
+	for f in grid.get(Vector2i(floori(p.x / CELL), floori(p.y / CELL)), []):
+		if _dist_to_obb(p, f["c"], f["hx"], f["hz"], f["rot"]) < margin:
+			return false
+	return true
+
+
+## Herbe partout où il y a de la place, en touffes plus denses le long des chemins et au pied des murs,
+## plus des trèfles et des pissenlits : la ville d'insectes pousse dans un terrain vague.
+func _vegetation() -> void:
+	var grid := _building_grid()
+	var patches := FastNoiseLite.new()
+	patches.seed = 21
+	patches.frequency = 0.012
+	var tufts := []
+	var colors := []
+	var add := func(p: Vector2, h: float) -> void:
+		var basis := Basis(Vector3.UP, b.rand(0, TAU)).scaled(Vector3(h * b.rand(0.7, 1.1), h, h * b.rand(0.7, 1.1)))
+		tufts.append(Transform3D(basis, Vector3(p.x, 0, p.y)))
+		colors.append(Color(b.rand(0.75, 1.05), b.rand(0.85, 1.05), b.rand(0.6, 0.9)))
+	# terrain vague : des plaques d'herbe haute
+	for n in 36000:
+		var p := Vector2(b.rand(-Layout.HALF, Layout.HALF), b.rand(-Layout.HALF, Layout.HALF))
+		var dens := patches.get_noise_2dv(p) * 0.5 + 0.5
+		if b.rng.randf() > dens * dens * 2.0:
+			continue
+		if road_clearance(p, -1, 60.0)[0] < SIDEWALK_W + 1.0 or not _free_ground(p, grid, 1.5):
+			continue
+		add.call(p, b.rand(6.0, 18.0) * (0.6 + dens))
+	# bordures des chemins
+	for road in Layout.ROADS:
+		var hw: float = road[1] / 2.0
+		var pts := Layout.sample_road(road[2], 3.0)
+		for k in range(1, pts.size() - 1):
+			var t := (pts[k + 1] - pts[k - 1]).normalized()
+			for side: float in [-1.0, 1.0]:
+				if b.rng.randf() > 0.7:
+					continue
+				var p := pts[k] + Vector2(-t.y, t.x) * side * (hw + SIDEWALK_W + b.rand(0.5, 5.0))
+				if road_clearance(p, -1, 60.0)[0] < SIDEWALK_W + 0.5 or not _free_ground(p, grid, 1.0):
+					continue
+				add.call(p, b.rand(5.0, 12.0))
+	var tuft_mat := b.mat(Color.WHITE, 0.9, {"vertex_color_use_as_albedo": true, "cull_mode": BaseMaterial3D.CULL_DISABLED})
+	# la moitié des touffes avec le modèle du fil des assets s'il existe
+	var model: Array = _model_mesh("grass_clump")
+	if model.is_empty():
+		_multimesh_mesh(_tuft_mesh(), tuft_mat, tufts, colors)
+	else:
+		var mine := []
+		var mine_c := []
+		var theirs := []
+		for k in tufts.size():
+			if k % 2 == 0:
+				mine.append(tufts[k])
+				mine_c.append(colors[k])
+			else:
+				theirs.append(tufts[k] * model[1])
+		_multimesh_mesh(_tuft_mesh(), tuft_mat, mine, mine_c)
+		_multimesh_mesh(model[0], null, theirs)
+	# trèfles, pissenlits, feuilles mortes, champignons
+	for spec in [["clover", 260, 8.0, 14.0, true], ["dandelion", 90, 30.0, 55.0, false], ["fallen_leaf", 140, 12.0, 22.0, true], ["mushroom", 50, 8.0, 16.0, false]]:
+		var mesh: Array = _model_mesh(spec[0], spec[4])
+		if mesh.is_empty():
+			continue
+		var xf := []
+		var tries := 0
+		while xf.size() < spec[1] and tries < spec[1] * 20:
+			tries += 1
+			var p := Vector2(b.rand(-Layout.HALF, Layout.HALF), b.rand(-Layout.HALF, Layout.HALF))
+			if road_clearance(p, -1, 60.0)[0] < SIDEWALK_W + 2.0 or not _free_ground(p, grid, 3.0):
+				continue
+			var h := b.rand(spec[2], spec[3])
+			xf.append(Transform3D(Basis(Vector3.UP, b.rand(0, TAU)).scaled(Vector3.ONE * h), Vector3(p.x, 0, p.y)) * mesh[1])
+		_multimesh_mesh(mesh[0], null, xf)
+	print("vegetation: ", tufts.size(), " touffes")
