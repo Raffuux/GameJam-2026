@@ -97,6 +97,7 @@ export function createFly() {
   };
   root.userData.anchors = {
     neck: { position: [0, 0.47, 0.25], radius: 0.17 },
+    head: { position: [0, 0.54, 0.33], radii: [0.15, 0.11, 0.14] },
     back: { position: [0, 0.6, -0.32], size: 0.2 },
   };
   return tag(root, 'fly', { category: 'insect', heightCm: 0.7, animated: true });
@@ -128,6 +129,7 @@ export function createMantis() {
   addEyes(head, { x: 0.36, y: 0.12, z: 0.05, r: 0.18, color: PALETTE.mantisDark });
   addAntennae(head, { x: 0.08, y: 0.2, z: 0.1, length: 2, material: dark });
   pronotumPivot.name = 'mantis_pronotum';
+  head.name = 'mantis_head';
   pronotumPivot.add(head);
   // Raptorial forelegs, folded in prayer.
   const arms = [];
@@ -153,6 +155,7 @@ export function createMantis() {
   };
   root.userData.anchors = {
     neck: { parent: 'mantis_pronotum', position: [0, 0, 2.0], radius: 0.3 },
+    head: { parent: 'mantis_head', position: [0, 0.2, 0.05], radii: [0.36, 0.2, 0.3], tilt: 0.75 },
     back: { position: [0, 1.95, -0.9], size: 0.55, tilt: -0.12 },
   };
   return tag(root, 'mantis', { category: 'insect', heightCm: 3.8, animated: true });
@@ -186,6 +189,7 @@ export function createAnt({ color = PALETTE.ant } = {}) {
   root.userData.update = (t, speed = 1) => walk(t, speed * 1.4);
   root.userData.anchors = {
     neck: { position: [0, 0.36, 0.23], radius: 0.1 },
+    head: { position: [0, 0.42, 0.34], radii: [0.14, 0.09, 0.14] },
     back: { position: [0, 0.53, -0.42], size: 0.16 },
   };
   return tag(root, 'ant', { category: 'insect', heightCm: 0.5, animated: true });
@@ -382,6 +386,7 @@ export function createSpider({ color = PALETTE.spider } = {}) {
   root.userData.update = (t, speed = 1) => walk(t, speed);
   root.userData.anchors = {
     neck: { position: [0, 0.48, -0.08], radius: 0.26 },
+    head: { position: [0, 0.54, 0.14], radii: [0.3, 0.16, 0.3] },
     back: { position: [0, 0.98, -0.5], size: 0.42, tilt: 0.2 },
   };
   return tag(root, 'spider', { category: 'insect', heightCm: 1, animated: true });

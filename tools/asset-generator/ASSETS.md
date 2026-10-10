@@ -70,15 +70,19 @@ Pour les régénérer : `npx vite --port 4176` puis `node scripts/design-sheets.
 
 ## Gangs et territoires
 
-Définis dans `src/assets/gangs.js` (`GANGS`). Deux gangs affichent leur couleur avec un bandana,
-deux portent un tatouage sur le dos.
+Définis dans `src/assets/gangs.js` (`GANGS`). Chaque membre porte un look de gang : un tatouage tête de
+mort sur le dos (avec l'emblème du gang), une chaîne en or avec pendentif tête de mort et un durag satiné.
+Les gangs « couleurs » (à la Bloods et Crips) ont en plus un bandana et un durag à leur couleur ; les gangs
+« tatouage » portent un durag neutre et laissent parler l'encre.
 
-| Gang | Espèce | Signature | Couleur | Emblème |
-|---|---|---|---|---|
-| Les Tisseuses | araignée | tatouage | violet | toile |
-| Les Prieurs | mante religieuse | couleurs (bandana) | rouge | griffes en V |
-| La Nuée | mouche | couleurs (bandana) | bleu | œil composé |
-| La Colonie | fourmi | tatouage | orange | chevrons |
+| Gang | Espèce | Style | Couleur | Tatouage | Durag |
+|---|---|---|---|---|---|
+| Les Tisseuses | araignée | tatouage | violet | tête de mort blanche sur toile violette | noir |
+| Les Prieurs | mante religieuse | couleurs (bandana) | rouge | tête de mort noire sur griffes rouges | rouge |
+| La Nuée | mouche | couleurs (bandana) | bleu | tête de mort blanche sur œil composé bleu | bleu |
+| La Colonie | fourmi | tatouage | orange | tête de mort et chevrons orange | kaki |
+
+Les pièces s'appellent `gang_tattoo`, `gang_chain`, `gang_durag` et `gang_bandana` dans les .glb.
 
 ```js
 import { createMantis, applyGang, createGangFlag, createGangTag, createTerritoryMarker } from './src/assets/index.js';

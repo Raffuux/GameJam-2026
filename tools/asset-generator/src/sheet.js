@@ -33,10 +33,10 @@ const SPECIES = {
 };
 
 const GANG_NOTES = {
-  tisseuses: { sign: 'Tatouage de toile blanche sur l\'abdomen', notes: ['Gang des araignées. Signature : tatouage, pas de couleur portée.', 'Le tatouage toile est blanc cassé, centré sur le dos, lisible vu de dessus (caméra de jeu).', 'Couleur de gang (violet) réservée aux drapeaux, tags et bornes.', 'QG : repaire aux toiles géantes.'] },
-  prieurs: { sign: 'Bandana rouge noué au cou', notes: ['Gang des mantes. Signature : couleurs, à la Bloods.', 'Bandana rouge noué autour du pronotum, pointe vers l\'avant.', 'Emblème : deux griffes croisées en V.', 'QG : nid des mantes et docks (entrepôt de sardines).'] },
-  nuee: { sign: 'Bandana bleu noué au cou', notes: ['Gang des mouches. Signature : couleurs, à la Crips.', 'Bandana bleu au cou, très visible quand l\'essaim passe.', 'Emblème : œil composé.', 'QG : la décharge et ses sacs poubelle.'] },
-  colonie: { sign: 'Tatouage de chevrons orange sur le gastre', notes: ['Gang des fourmis. Signature : tatouage.', 'Chevrons orange sur le gastre : se lit en colonne, comme un galon militaire.', 'Discipline et nombre : jamais une fourmi seule.', 'QG : la grande fourmilière et le chantier.'] },
+  tisseuses: { sign: "Tête de mort sur toile tatouée sur l'abdomen, durag noir, chaîne en or", notes: ["Gang des araignées. Signature : le tatouage, pas de couleur portée.", "Tête de mort blanche sur une toile violette, en plein dos : lisible vu de dessus (caméra de jeu).", "Durag noir satiné et chaîne en or avec pendentif tête de mort.", "Violet réservé aux drapeaux, tags et bornes. QG : repaire aux toiles géantes."] },
+  prieurs: { sign: "Durag et bandana rouges, tête de mort et griffes tatouées, chaîne en or", notes: ["Gang des mantes. Signature : le rouge, à la Bloods.", "Durag rouge à longues queues, bandana rouge noué autour du pronotum.", "Tatouage à l'encre noire : tête de mort noire sur deux griffes croisées rouges.", "Chaîne en or avec pendentif tête de mort. QG : nid des mantes et docks."] },
+  nuee: { sign: "Durag et bandana bleus, tête de mort tatouée, chaîne en or", notes: ["Gang des mouches. Signature : le bleu, à la Crips.", "Durag bleu et bandana bleu, très visibles quand l'essaim passe.", "Tatouage : tête de mort blanche et os croisés sur l'œil composé bleu.", "Chaîne en or avec pendentif tête de mort. QG : la décharge."] },
+  colonie: { sign: "Tête de mort et chevrons tatoués sur le gastre, durag kaki, chaîne en or", notes: ["Gang des fourmis. Signature : le tatouage.", "Tête de mort et os croisés orange, avec trois chevrons dessous comme un galon militaire.", "Durag kaki façon armée et chaîne en or : tout le monde pareil, en colonne.", "QG : la grande fourmilière et le chantier."] },
 };
 
 const FACTORY = { spider: createSpider, mantis: createMantis, fly: createFly, ant: createAnt };
@@ -116,15 +116,20 @@ const BACK = new THREE.Vector3(0, 0, -1);
 const TOP = new THREE.Vector3(0, 1, 0);
 const THREE_Q = new THREE.Vector3(1, 0.55, 1.15);
 
-// Close-up on the gang sign, or on the head for plain creatures.
-function detailView(stage, object, aspect) {
-  const sign = object.getObjectByName('gang_bandana') ?? object.getObjectByName('gang_tattoo');
-  if (sign) {
-    const b = new THREE.Box3().setFromObject(sign, true);
+// Close-up on the gang look (durag, chain, bandana), on the back tattoo, or on
+// the head for plain creatures.
+function detailView(stage, object, aspect, focus = 'look') {
+  if (focus === 'tattoo') {
+    const b = new THREE.Box3().setFromObject(object.getObjectByName('gang_tattoo'), true);
     const s = b.getSize(new THREE.Vector3());
-    const bandana = sign.name === 'gang_bandana';
-    const dir = bandana ? new THREE.Vector3(1, 0.3, 0.55) : new THREE.Vector3(0.25, 1, -0.45);
-    return perspView(stage, dir, aspect, { target: b.getCenter(new THREE.Vector3()), distance: Math.max(Math.max(s.x, s.y, s.z) * (bandana ? 3.6 : 4.5), bandana ? stage.span * 0.9 : 0) });
+    return perspView(stage, new THREE.Vector3(0.25, 1, -0.45), aspect, { target: b.getCenter(new THREE.Vector3()), distance: Math.max(s.x, s.y, s.z) * 3.4 });
+  }
+  const gear = ['gang_durag', 'gang_chain', 'gang_bandana'].map((n) => object.getObjectByName(n)).filter(Boolean);
+  if (gear.length) {
+    const b = new THREE.Box3();
+    for (const g of gear) b.union(new THREE.Box3().setFromObject(g, true));
+    const s = b.getSize(new THREE.Vector3());
+    return perspView(stage, new THREE.Vector3(0.9, 0.35, 1), aspect, { target: b.getCenter(new THREE.Vector3()), distance: Math.max(s.x, s.y, s.z) * 3 });
   }
   const { box, size } = stage;
   const target = new THREE.Vector3((box.min.x + box.max.x) / 2, box.min.y + size.y * 0.6, box.max.z - size.z * 0.18);
@@ -204,8 +209,8 @@ function characterSheet(id) {
     ['Profil', 'orthographique', SIDE, 'ortho'],
     ['Dos', 'orthographique', BACK, 'ortho'],
     ['Trois-quarts', '', THREE_Q, 'persp'],
-    ['Dessus', 'vue de jeu', TOP, 'ortho'],
-    [gang ? 'Signe de gang' : 'Détail tête', gang ? GANG_NOTES[gang.id].sign.toLowerCase() : '', null, 'detail'],
+    gang ? ['Tatouage', 'dos', null, 'tattoo'] : ['Dessus', 'vue de jeu', TOP, 'ortho'],
+    gang ? ['Look', 'durag, chaîne' + (gang.style === 'colors' ? ', bandana' : ''), null, 'detail'] : ['Détail tête', '', null, 'detail'],
   ];
   let ref;
   views.forEach(([label, sub, dir, kind], i) => {
@@ -213,7 +218,7 @@ function characterSheet(id) {
     ref ??= object;
     const stage = studio(object);
     const aspect = rects[i].w / rects[i].h;
-    const cam = kind === 'ortho' ? orthoView(stage, dir, aspect) : kind === 'persp' ? perspView(stage, dir, aspect) : detailView(stage, object, aspect);
+    const cam = kind === 'ortho' ? orthoView(stage, dir, aspect) : kind === 'persp' ? perspView(stage, dir, aspect) : detailView(stage, object, aspect, kind === 'tattoo' ? 'tattoo' : 'look');
     addCell(rects[i], stage, cam, label, sub);
   });
   const stage = studio(make());
@@ -241,8 +246,8 @@ function gangSheet(gangId) {
     [memberId, 'Face', '', FRONT, 'ortho'],
     [memberId, 'Trois-quarts', '', THREE_Q, 'persp'],
     [memberId, 'Dos', '', BACK, 'ortho'],
-    [memberId, 'Dessus', 'vue de jeu', TOP, 'ortho'],
-    [memberId, 'Signe', GANG_NOTES[gang.id].sign.toLowerCase(), null, 'detail'],
+    [memberId, 'Tatouage', 'dos', null, 'tattoo'],
+    [memberId, 'Look', 'durag, chaîne' + (gang.style === 'colors' ? ', bandana' : ''), null, 'detail'],
     [`habitat_${gang.id}`, 'QG', 'habitat', new THREE.Vector3(1, 0.8, 1.2), 'persp'],
     [`flag_${gang.id}`, 'Drapeau', '', new THREE.Vector3(0.5, 0.15, 1), 'persp'],
     [`tag_${gang.id}`, 'Tag', 'graffiti', FRONT, 'ortho'],
@@ -254,7 +259,7 @@ function gangSheet(gangId) {
     if (id === memberId) member ??= object;
     const stage = studio(object);
     const aspect = rects[i].w / rects[i].h;
-    const cam = kind === 'ortho' ? orthoView(stage, dir, aspect) : kind === 'persp' ? perspView(stage, dir, aspect) : detailView(stage, object, aspect);
+    const cam = kind === 'ortho' ? orthoView(stage, dir, aspect) : kind === 'persp' ? perspView(stage, dir, aspect) : detailView(stage, object, aspect, kind === 'tattoo' ? 'tattoo' : 'look');
     addCell(rects[i], stage, cam, label, sub);
   });
   sidebar({
