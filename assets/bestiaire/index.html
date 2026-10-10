@@ -1,0 +1,377 @@
+<title>Bestiaire Spider Jam</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Figtree:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout : scène 3D plein écran au ras du sol ; étiquettes de spécimen posées par-dessus (liste à gauche, fiche en bas). */
+:root {
+  --sky: #a9d6e5;
+  --card: rgba(244, 246, 228, 0.94);
+  --ink: #23291b;
+  --ink-soft: #5b6449;
+  --moss: #4d7a2a;
+  --amber: #e3a21f;
+  --line: rgba(35, 41, 27, 0.16);
+  --f-display: "Lilita One", "Trebuchet MS", system-ui, sans-serif;
+  --f-body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+html, body { height: 100%; }
+body { background: var(--sky); color: var(--ink); font-family: var(--f-body); overflow: hidden; }
+#app { position: relative; height: 100%; }
+#scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+.brand { position: absolute; top: 16px; left: 16px; display: flex; align-items: baseline; gap: 10px; pointer-events: none; }
+.brand h1 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 2rem; letter-spacing: 0.01em; color: var(--ink);
+  text-shadow: 0 2px 0 rgba(255,255,255,0.55); }
+.brand span { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700; color: var(--ink-soft); }
+
+#roster { position: absolute; top: 72px; left: 16px; display: flex; flex-direction: column; gap: 6px; width: 210px; }
+.pick { display: grid; grid-template-columns: 14px 1fr; column-gap: 10px; align-items: center; text-align: left; cursor: pointer;
+  background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font: inherit;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.05); transition: transform .15s ease, border-color .15s ease; }
+.pick:hover { transform: translateX(3px); }
+.pick:focus-visible, .chip:focus-visible, .act:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+.pick[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 4px 0 0 var(--amber); }
+.pick .sw { width: 14px; height: 14px; border-radius: 50%; grid-row: span 2; border: 2px solid rgba(0,0,0,0.25); }
+.pick b { font-weight: 700; font-size: 0.95rem; }
+.pick i { font-size: 0.74rem; color: var(--ink-soft); }
+
+#card { position: absolute; left: 16px; bottom: 16px; width: min(380px, calc(100% - 32px)); background: var(--card); border: 1px solid var(--line);
+  border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 8px 24px rgba(30,40,20,0.18); }
+.card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+#c-name { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 1.7rem; line-height: 1.05; text-wrap: balance; }
+#c-latin { font-style: italic; color: var(--ink-soft); font-size: 0.85rem; }
+#c-tag { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; background: var(--ink); color: var(--card);
+  padding: 4px 8px; border-radius: 4px; white-space: nowrap; }
+#c-role { margin: 0; font-size: 0.92rem; line-height: 1.45; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; border-block: 1px dashed var(--line); padding-block: 8px; }
+.stats div { min-width: 0; }
+.stats dt { font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-soft); font-weight: 700; }
+.stats dd { margin: 2px 0 0; font-family: var(--f-mono); font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip, .act { font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; border-radius: 999px; padding: 6px 12px; border: 1px solid var(--ink); }
+.chip { background: transparent; color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--card); }
+.act { background: var(--amber); color: var(--ink); border-color: var(--amber); }
+.act.ghost { background: transparent; border-color: var(--line); }
+.act[aria-pressed="true"] { background: var(--moss); border-color: var(--moss); color: var(--card); }
+#hint { position: absolute; right: 16px; bottom: 16px; font-size: 0.75rem; color: var(--ink); background: var(--card); border: 1px solid var(--line);
+  padding: 6px 10px; border-radius: 6px; pointer-events: none; }
+#err { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; text-align: center; }
+
+@media (max-width: 720px) {
+  .brand h1 { font-size: 1.5rem; }
+  #roster { top: 56px; left: 0; right: 0; width: auto; flex-direction: row; overflow-x: auto; padding-inline: 16px; padding-bottom: 4px; scrollbar-width: none; }
+  .pick { flex: 0 0 auto; }
+  .pick i { display: none; }
+  .pick .sw { grid-row: auto; }
+  .pick:hover { transform: none; }
+  #card { padding: 12px 14px; gap: 8px; }
+  #c-name { font-size: 1.35rem; }
+  #c-role { font-size: 0.84rem; }
+  #hint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .pick { transition: none; } }
+</style>
+
+<div id="app">
+  <canvas id="scene" aria-label="Aperçu 3D de la créature"></canvas>
+  <header class="brand"><h1>Bestiaire</h1><span>Spider Jam · assets</span></header>
+  <nav id="roster" aria-label="Créatures"></nav>
+  <section id="card" aria-live="polite">
+    <div class="card-head">
+      <div><h2 id="c-name">—</h2><div id="c-latin"></div></div>
+      <span id="c-tag"></span>
+    </div>
+    <p id="c-role"></p>
+    <dl class="stats">
+      <div><dt>Taille réelle</dt><dd id="c-size"></dd></div>
+      <div><dt>vs araignée</dt><dd id="c-ratio"></dd></div>
+      <div><dt>Triangles</dt><dd id="c-tris"></dd></div>
+    </dl>
+    <div class="row" id="modes" role="group" aria-label="Animation"></div>
+    <div class="row">
+      <button class="act ghost" id="lineup" aria-pressed="false" type="button">Tous à l'échelle réelle</button>
+      <button class="act" id="export" type="button" hidden>Exporter .glb</button>
+    </div>
+  </section>
+  <div id="hint">Glisser pour tourner · molette pour zoomer</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+<script src="creatures.js"></script>
+<script>
+(function () {
+  'use strict';
+  if (!window.THREE || !window.Bestiaire) {
+    document.getElementById('app').insertAdjacentHTML('beforeend', '<p id="err">Three.js ne s\'est pas chargé. Vérifie la connexion puis recharge la page.</p>');
+    return;
+  }
+  const B = window.Bestiaire, LIST = B.list;
+  const SPIDER_MM = 15, NORM = 1.8; // l'araignée fait 1,8 unité de long
+
+  // ---------- rendu ----------
+  const canvas = document.getElementById('scene');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xa9d6e5);
+  scene.fog = new THREE.Fog(0xb8dccc, 14, 46);
+  const camera = new THREE.PerspectiveCamera(38, 1, 0.05, 200);
+  camera.position.set(3.4, 1.3, 3.8);
+  const controls = new THREE.OrbitControls(camera, canvas);
+  controls.target.set(0, 0.55, 0);
+  controls.enableDamping = true;
+  controls.minDistance = 1.2; controls.maxDistance = 34;
+  controls.maxPolarAngle = Math.PI * 0.49;
+  controls.autoRotate = true; controls.autoRotateSpeed = 0.5;
+
+  scene.add(new THREE.HemisphereLight(0xdff1ff, 0x6b5a2c, 0.65));
+  const sun = new THREE.DirectionalLight(0xfff0d0, 0.95);
+  sun.position.set(6, 12, 5);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 10, bottom: -10, near: 1, far: 40 });
+  sun.shadow.bias = -0.0008;
+  scene.add(sun);
+
+  // ---------- décor : un carré de jardin vu par un insecte ----------
+  const rnd = (s => () => (s = (s * 16807) % 2147483647) / 2147483647)(42);
+  const flat = (c, o) => new THREE.MeshStandardMaterial(Object.assign({ color: c, flatShading: true, roughness: 0.9 }, o || {}));
+
+  const gGeo = new THREE.PlaneGeometry(90, 90, 70, 70); gGeo.rotateX(-Math.PI / 2);
+  const pos = gGeo.attributes.position, cols = [];
+  const dirt = new THREE.Color(0x8a6a44), moss = new THREE.Color(0x6f8f34), c = new THREE.Color();
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i), r = Math.hypot(x, z);
+    const h = (Math.sin(x * 0.45) * Math.cos(z * 0.38) * 0.25 + Math.sin(x * 1.3 + z * 0.7) * 0.06) * Math.min(1, Math.max(0, (r - 4) / 6));
+    pos.setY(i, h);
+    c.copy(dirt).lerp(moss, Math.min(1, Math.max(0, 0.35 + Math.sin(x * 0.2 + z * 0.3) * 0.4 + rnd() * 0.25)));
+    cols.push(c.r, c.g, c.b);
+  }
+  gGeo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  gGeo.computeVertexNormals();
+  const ground = new THREE.Mesh(gGeo, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 }));
+  ground.receiveShadow = true; scene.add(ground);
+
+  // brins d'herbe géants (un brin réel de 6-12 cm = 7-14 unités ici)
+  const blade = new THREE.BufferGeometry();
+  (function () {
+    const v = [], seg = 5;
+    for (let i = 0; i < seg; i++) {
+      const y0 = i / seg, y1 = (i + 1) / seg, w0 = 0.5 * (1 - y0), w1 = 0.5 * (1 - y1), b0 = y0 * y0 * 0.35, b1 = y1 * y1 * 0.35;
+      v.push(-w0, y0, b0, w0, y0, b0, w1, y1, b1, -w0, y0, b0, w1, y1, b1, -w1, y1, b1);
+    }
+    blade.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+    blade.computeVertexNormals();
+  })();
+  const grassN = 520;
+  const grass = new THREE.InstancedMesh(blade, new THREE.MeshStandardMaterial({ color: 0xffffff, side: THREE.DoubleSide, flatShading: true, roughness: 0.8 }), grassN);
+  grass.castShadow = true; grass.receiveShadow = true;
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(), p3 = new THREE.Vector3();
+  const greens = [0x5f9e2f, 0x77b33a, 0x4c8526, 0x8cc04a, 0x6aa832, 0x9fbf4a];
+  let placed = 0;
+  while (placed < grassN) {
+    const a = rnd() * Math.PI * 2, r = 6.5 + Math.pow(rnd(), 0.7) * 26;
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (z > 0 && Math.abs(x) < 11 && r < 18) continue; // garde une trouée vers la caméra
+    e.set((rnd() - 0.5) * 0.25, rnd() * Math.PI * 2, (rnd() - 0.5) * 0.25);
+    q.setFromEuler(e);
+    const hgt = 5 + rnd() * 9, wid = 0.6 + rnd() * 0.7;
+    sc.set(wid, hgt, wid * (0.6 + rnd()));
+    m4.compose(p3.set(x, -0.1, z), q, sc);
+    grass.setMatrixAt(placed, m4);
+    grass.setColorAt(placed, c.set(greens[Math.floor(rnd() * greens.length)]).multiplyScalar(0.85 + rnd() * 0.3));
+    placed++;
+  }
+  scene.add(grass);
+
+  // capsule de bouteille, cailloux, feuille morte, goutte de rosée
+  (function props() {
+    const cap = new THREE.Group();
+    const capM = flat(0xc8352b, { roughness: 0.35, metalness: 0.5 });
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(1.75, 1.75, 0.12, 24), capM); top.position.y = 1.15;
+    const skirt = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.95, 1.1, 21, 1, true), flat(0xb02c24, { roughness: 0.4, metalness: 0.5, side: THREE.DoubleSide }));
+    skirt.position.y = 0.6; cap.add(top, skirt);
+    for (let i = 0; i < 21; i++) { const r = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.05, 0.12), capM); const a = i / 21 * Math.PI * 2; r.position.set(Math.cos(a) * 1.93, 0.55, Math.sin(a) * 1.93); r.rotation.y = -a; cap.add(r); }
+    cap.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    cap.position.set(-5.2, 0, -3.6); cap.rotation.set(0.12, 0.4, 0.18); scene.add(cap);
+
+    const rockM = [flat(0x9a948a), flat(0x7d776e), flat(0xb3aa98)];
+    [[3.6, -2.4, 0.9], [-3.2, 1.4, 0.5], [4.6, 1.8, 0.35], [-1.6, -5.2, 1.4], [2.2, -5.6, 0.6], [-4.4, -0.6, 0.3]].forEach(([x, z, s], i) => {
+      const r = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), rockM[i % 3]);
+      r.scale.set(1.2, 0.7, 1); r.position.set(x, s * 0.35, z); r.rotation.set(rnd(), rnd() * 6, rnd());
+      r.castShadow = r.receiveShadow = true; scene.add(r);
+    });
+
+    const ls = new THREE.Shape();
+    ls.moveTo(0, -2.6); ls.bezierCurveTo(1.6, -1.6, 1.7, 1.2, 0, 2.8); ls.bezierCurveTo(-1.7, 1.2, -1.6, -1.6, 0, -2.6);
+    const lg = new THREE.ShapeGeometry(ls, 14); lg.rotateX(-Math.PI / 2);
+    const lp = lg.attributes.position;
+    for (let i = 0; i < lp.count; i++) lp.setY(i, Math.abs(lp.getX(i)) * 0.18 + Math.sin(lp.getZ(i) * 1.2) * 0.08);
+    lg.computeVertexNormals();
+    const leaf = new THREE.Mesh(lg, flat(0xc98f2e, { side: THREE.DoubleSide, roughness: 0.8 }));
+    leaf.position.set(4.2, 0.05, -1.2); leaf.rotation.y = 0.9; leaf.receiveShadow = leaf.castShadow = true; scene.add(leaf);
+    const rib = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.07, 5.2, 5), flat(0x9c6a1f));
+    rib.rotation.x = Math.PI / 2; rib.position.y = 0.06; leaf.add(rib);
+
+    const drop = new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 14), new THREE.MeshStandardMaterial({ color: 0xcfefff, transparent: true, opacity: 0.45, roughness: 0.02, metalness: 0.2 }));
+    drop.scale.y = 0.8; drop.position.set(2.4, 0.33, -2.2); scene.add(drop);
+  })();
+
+  // ---------- créatures ----------
+  const holders = LIST.map(info => {
+    const root = info.build();
+    const box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3());
+    const k = NORM / Math.max(size.x, size.z);
+    root.scale.setScalar(k);
+    root.position.y = -box.min.y * k;
+    const holder = new THREE.Group(); holder.add(root); holder.visible = false;
+    holder.userData = { info, root, rig: root.userData.rig, height: size.y * k, w: { walk: 0, fly: 0, special: 0 }, target: {}, phi: 0 };
+    scene.add(holder);
+    return holder;
+  });
+
+  // ---------- état ----------
+  let current = 0, lineup = false, mode = 'repos';
+  const R = 2.2, center = new THREE.Vector3(-R, 0, 0);
+  const $ = id => document.getElementById(id);
+  const roster = $('roster');
+  LIST.forEach((info, i) => {
+    const b = document.createElement('button');
+    b.className = 'pick'; b.type = 'button'; b.id = 'pick-' + info.id;
+    b.innerHTML = '<span class="sw" style="background:' + info.color + '"></span><b>' + info.name + '</b><i>' + info.tag + '</i>';
+    b.addEventListener('click', () => select(i));
+    roster.appendChild(b);
+  });
+
+  function setMode(id) {
+    mode = id;
+    const info = LIST[current];
+    const m = info.modes.find(x => x.id === id) || info.modes[0];
+    holders.forEach(h => { h.userData.target = lineup ? {} : (h === holders[current] ? (m.w || {}) : {}); });
+    controls.autoRotate = !lineup && !(m.w && m.w.walk);
+    [...$('modes').children].forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === id)));
+  }
+
+  function select(i) {
+    current = i;
+    const info = LIST[i], h = holders[i];
+    [...roster.children].forEach((b, j) => b.setAttribute('aria-pressed', String(j === i)));
+    $('c-name').textContent = info.name;
+    $('c-latin').textContent = info.latin;
+    $('c-tag').textContent = info.tag;
+    $('c-role').textContent = info.role;
+    $('c-size').textContent = info.size + ' mm';
+    $('c-ratio').textContent = '×' + (info.size / SPIDER_MM).toFixed(2).replace('.', ',');
+    $('c-tris').textContent = B.countTris(h.userData.root).toLocaleString('fr-FR');
+    $('modes').innerHTML = '';
+    info.modes.forEach(m => {
+      const b = document.createElement('button');
+      b.className = 'chip'; b.type = 'button'; b.dataset.mode = m.id; b.textContent = m.label;
+      b.addEventListener('click', () => setMode(m.id));
+      $('modes').appendChild(b);
+    });
+    if (lineup) toggleLineup(false);
+    holders.forEach((o, j) => { o.visible = j === i; o.position.set(0, 0, 0); o.rotation.set(0, 0, 0); o.scale.setScalar(1); o.userData.phi = 0; });
+    const goal = new THREE.Vector3(0, h.userData.height * 0.45, 0);
+    camera.position.sub(controls.target).add(goal);
+    controls.target.copy(goal);
+    setMode('repos');
+  }
+
+  function toggleLineup(on) {
+    lineup = on;
+    $('lineup').setAttribute('aria-pressed', String(on));
+    if (!on) { select(current); return; }
+    const order = holders.slice().sort((a, b) => a.userData.info.size - b.userData.info.size);
+    let x = 0; const gap = 0.6, spans = [];
+    order.forEach(h => {
+      h.visible = true; h.userData.phi = 0;
+      h.scale.setScalar(h.userData.info.size / SPIDER_MM);
+      h.rotation.set(0, 0, 0); h.position.set(0, 0, 0);
+      const bx = new THREE.Box3().setFromObject(h); const w = bx.max.x - bx.min.x;
+      spans.push([h, w, bx.min.x]);
+    });
+    const total = spans.reduce((s, [, w]) => s + w, 0) + gap * (spans.length - 1);
+    spans.forEach(([h, w, minX]) => { h.position.set(x - total / 2 - minX, 0, 0); x += w + gap; });
+    controls.target.set(0, 1.6, 0);
+    camera.position.set(total * 0.1, 3.4, total * 1.15);
+    setMode('repos');
+  }
+  $('lineup').addEventListener('click', () => toggleLineup(!lineup));
+
+  // ---------- export glTF (version locale uniquement : le cadre de l'artefact bloque les téléchargements) ----------
+  function bakeForExport(info) {
+    const root = info.build();
+    root.userData = {};
+    const box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3());
+    const k = NORM / Math.max(size.x, size.z) * info.size / SPIDER_MM;
+    root.scale.setScalar(k); root.position.y = -box.min.y * k;
+    root.traverse(o => {
+      o.userData = {};
+      if (o.isMesh) { const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); g.computeVertexNormals(); o.geometry = g; }
+    });
+    const scene1 = new THREE.Scene(); scene1.name = info.id; scene1.add(root);
+    return scene1;
+  }
+  window.exportGLB = function (id) {
+    const info = LIST.find(x => x.id === id);
+    return new Promise(res => new THREE.GLTFExporter().parse(bakeForExport(info), res, { binary: true }));
+  };
+  let inFrame = true; try { inFrame = window.self !== window.top; } catch (_) {}
+  if (!inFrame && THREE.GLTFExporter) {
+    $('export').hidden = false;
+    $('export').addEventListener('click', async () => {
+      const info = LIST[current], buf = await window.exportGLB(info.id);
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([buf], { type: 'model/gltf-binary' }));
+      a.download = info.id + '.glb'; a.click();
+    });
+  }
+
+  // ---------- boucle ----------
+  function resize() {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    renderer.setSize(w, h, false); camera.aspect = w / h;
+    camera.fov = w < 720 ? 48 : 38; camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize); resize();
+
+  const clock = new THREE.Clock(); let t = 0;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const tmp = new THREE.Vector3();
+  function frame() {
+    const dt = Math.min(clock.getDelta(), 0.05); t += reduce ? dt * 0.4 : dt;
+    holders.forEach((h, i) => {
+      if (!h.visible) return;
+      const u = h.userData, k = Math.min(1, dt * 4);
+      ['walk', 'fly', 'special'].forEach(key => { u.w[key] += ((u.target[key] || 0) - u.w[key]) * k; });
+      u.rig.update(t + i * 1.3, u.w);
+      if (!lineup && u.w.walk > 0.01) {
+        u.phi += dt * (u.info.id === 'mante' ? 0.18 : 0.3) * u.w.walk;
+        h.position.set(center.x + Math.cos(u.phi) * R, 0, center.z + Math.sin(u.phi) * R);
+        h.rotation.y = -u.phi;
+        tmp.set(h.position.x, controls.target.y, h.position.z).sub(controls.target);
+        controls.target.add(tmp); camera.position.add(tmp);
+      }
+      if (!lineup) { // la caméra suit aussi l'insecte quand il décolle
+        tmp.set(0, u.height * 0.45 + u.rig.body.position.y * u.root.scale.y - controls.target.y, 0).multiplyScalar(Math.min(1, dt * 3));
+        controls.target.add(tmp); camera.position.add(tmp);
+      }
+    });
+    controls.update();
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  select(0);
+  requestAnimationFrame(frame);
+})();
+</script>
