@@ -5,11 +5,13 @@ import * as nature from './nature.js';
 import * as objects from './objects.js';
 import * as insects from './insects.js';
 import * as gangs from './gangs.js';
+import * as city from './city.js';
 
 export * from './nature.js';
 export * from './objects.js';
 export * from './insects.js';
 export * from './gangs.js';
+export * from './city.js';
 export { PALETTE } from './common.js';
 
 export const CATALOG = [
@@ -36,6 +38,25 @@ export const CATALOG = [
   { id: 'bee', label: 'Abeille', category: 'insect', create: insects.createBee },
   { id: 'caterpillar', label: 'Chenille', category: 'insect', create: insects.createCaterpillar },
   { id: 'spider', label: 'Araignée', category: 'insect', create: insects.createSpider },
+  { id: 'road_straight', label: 'Rue droite', category: 'city', create: city.createRoadStraight },
+  { id: 'road_cross', label: 'Carrefour', category: 'city', create: city.createRoadCross },
+  { id: 'bank', label: 'Banque', category: 'city', create: city.createBank },
+  { id: 'building_tower', label: 'Tour boîte de céréales', category: 'city', create: city.createTowerBuilding },
+  { id: 'building_box', label: 'Immeuble carton', category: 'city', create: city.createBoxBuilding },
+  { id: 'building_carton', label: 'Immeuble brique de lait', category: 'city', create: city.createCartonBuilding },
+  { id: 'fire_hydrant', label: "Bouche d'incendie", category: 'city', create: city.createFireHydrant },
+  { id: 'street_lamp', label: 'Lampadaire allumette', category: 'city', create: city.createStreetLamp },
+  { id: 'trash_bin', label: 'Poubelle', category: 'city', create: city.createTrashBin },
+  { id: 'dumpster', label: 'Benne', category: 'city', create: city.createDumpster },
+  { id: 'trash_bag', label: 'Sac poubelle', category: 'city', create: city.createTrashBag },
+  { id: 'crumpled_paper', label: 'Papier froissé', category: 'city', create: city.createCrumpledPaper },
+  { id: 'cigarette_butt', label: 'Mégot', category: 'city', create: city.createCigaretteButt },
+  { id: 'plastic_bottle', label: 'Bouteille plastique', category: 'city', create: city.createPlasticBottle },
+  { id: 'spider_web', label: 'Toile (Tisseuses)', category: 'zone', create: city.createSpiderWeb },
+  { id: 'warehouse', label: 'Entrepôt sardines (Prieurs)', category: 'zone', create: city.createWarehouse },
+  { id: 'puddle', label: 'Flaque des docks (Prieurs)', category: 'zone', create: city.createPuddle },
+  { id: 'anthill', label: 'Fourmilière (Colonie)', category: 'zone', create: city.createAnthill },
+  { id: 'scaffolding', label: 'Échafaudage (Colonie)', category: 'zone', create: city.createScaffolding },
 ];
 
 // Gang members, flags, graffiti tags and territory markers for each gang.
