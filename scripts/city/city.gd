@@ -1007,6 +1007,23 @@ func _dirty_areas() -> void:
 			made += 1
 
 
+## Un modèle des coins sales (PR des assets). Joue son animation « burn » en boucle ; sa lumière
+## intégrée est retirée, le `Fire` posé dessus éclaire déjà. Renvoie null si le modèle manque.
+func _dirty_model(name: String, pos: Vector3, fit: Vector3, solid: bool) -> Node3D:
+	var holder := Node3D.new()
+	b.root.add_child(holder)
+	if b.model(name, pos, b.rand(0, TAU), fit, solid, holder) == Vector3.ZERO:
+		holder.queue_free()
+		return null
+	for l in holder.find_children("*", "Light3D", true, false):
+		l.queue_free()
+	for ap: AnimationPlayer in holder.find_children("*", "AnimationPlayer", true, false):
+		if ap.has_animation("burn"):
+			ap.get_animation("burn").loop_mode = Animation.LOOP_LINEAR
+			ap.play("burn")
+	return holder
+
+
 func _dirty_area(c: Vector2, r: float, zone: String) -> void:
 	_dirty.append([c, r])
 	var center := Vector3(c.x, 0, c.y)
@@ -1019,12 +1036,19 @@ func _dirty_area(c: Vector2, r: float, zone: String) -> void:
 		stain.mesh.bottom_radius = sr
 		stain.scale = Vector3(1.0, 1.0, b.rand(0.6, 1.0))
 		stain.rotation.y = b.rand(0, TAU)
+	_dirty_model("oil_stain", center + Vector3(b.rand(-r, r), 0.2, b.rand(-r, r)) * 0.3, Vector3(r * 1.1, 0, r * 1.1), false)
 	# le tas
 	for k in b.rng.randi_range(5, 9):
 		var a := b.rand(0, TAU)
 		var d := b.rand(0.0, r * 0.7)
 		var p := center + Vector3(cos(a) * d, 0, sin(a) * d)
-		match b.rng.randi_range(0, 5):
+		match b.rng.randi_range(0, 8):
+			6:
+				_dirty_model("litter_pile", p, Vector3(b.rand(12, 18), 0, 0), false)
+			7:
+				_dirty_model("spilled_bin", p, Vector3(b.rand(14, 20), 0, 0), true)
+			8:
+				_dirty_model("burnt_trash", p, Vector3(b.rand(16, 24), 0, 0), false)
 			0, 1:
 				Props.trash_bag(b, p, b.rand(5, 10))
 			2:
@@ -1042,17 +1066,19 @@ func _dirty_area(c: Vector2, r: float, zone: String) -> void:
 	if b.rng.randf() < (0.8 if zone == "nuee" else 0.5):
 		var fire_pos := center + Vector3(b.rand(-r, r), 0, b.rand(-r, r)) * 0.3
 		if b.rng.randf() < 0.5:
-			var rust := b.mat(Color("6e3b22"), 0.9, {"metallic": 0.4})
-			b.cyl(fire_pos, 6.0, 6.0, 15.0, rust, true, 14, null, "")
-			b.cyl(fire_pos + Vector3(0, 14.9, 0), 5.4, 5.4, 0.3, Color("120c08"), false, 14)
-			b.cyl(fire_pos + Vector3(0, 5, 0), 6.2, 6.2, 1.2, b.mat(Color("4a2a18"), 0.9, {"metallic": 0.4}), false, 14)
+			var can := _dirty_model("fire_can", fire_pos, Vector3(0, 16, 0), true)
+			if can == null:
+				var rust := b.mat(Color("6e3b22"), 0.9, {"metallic": 0.4})
+				b.cyl(fire_pos, 6.0, 6.0, 15.0, rust, true, 14, null, "")
+				b.cyl(fire_pos + Vector3(0, 14.9, 0), 5.4, 5.4, 0.3, Color("120c08"), false, 14)
 			fire_pos.y = 15.0
 			var f := Fire.new(11.0)
 			f.position = fire_pos
 			b.root.add_child(f)
 		else:
-			# braises : un tas de cendres noires sous les flammes
-			b.cyl(fire_pos, 3, r * 0.3, 3.0, b.mat(Color("1a1512"), 1.0), true, 12)
+			# braises : un tas de déchets calcinés sous les flammes
+			if _dirty_model("trash_fire", fire_pos, Vector3(r * 0.8, 0, 0), false) == null:
+				b.cyl(fire_pos, 3, r * 0.3, 3.0, b.mat(Color("1a1512"), 1.0), true, 12)
 			var f := Fire.new(17.0)
 			f.position = fire_pos + Vector3(0, 2, 0)
 			b.root.add_child(f)

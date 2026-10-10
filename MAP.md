@@ -57,6 +57,8 @@ vignettage, contraste, saturation, teinte) sont en haut du shader.
 Coins sales (`_dirty_areas()` dans `city.gd`) : jusqu'à 17 terrains vagues près des rues, 5 à la Décharge et 3 par autre quartier.
 Chacun a des taches d'huile et de boue, un tas d'ordures (sacs, canettes, papiers, cartons, capsules, mégots) et
 souvent un feu (8 fois sur 10 à la Décharge, 1 sur 2 ailleurs), dans un bidon rouillé ou à même un tas de cendres.
+Quand les modèles de la PR des assets sont là (`oil_stain`, `litter_pile`, `spilled_bin`, `burnt_trash`, `fire_can`,
+`trash_fire`), ils remplacent ou complètent les formes simples ; l'animation `burn` tourne en boucle.
 Les feux (`scripts/fx/fire.gd`) sont des particules de flammes et de fumée avec une lumière orange qui vacille.
 
 ## Jouer
