@@ -81,10 +81,10 @@ static func grime() -> ImageTexture:
 	var img := Image.create(s, s, false, Image.FORMAT_RGBA8)
 	for y in s:
 		for x in s:
-			var v := 0.62 + a.get_pixel(x, y).r * 0.3 + f.get_pixel(x, y).r * 0.12
+			var v := 0.55 + a.get_pixel(x, y).r * 0.36 + f.get_pixel(x, y).r * 0.16
 			# coulures verticales
 			v -= maxf(0.0, sin(x * 0.21) * sin(x * 0.047 + 1.3)) * 0.06 * (y / float(s))
-			if rng.randf() < 0.012:
+			if rng.randf() < 0.02:
 				v -= 0.18
 			img.set_pixel(x, y, Color(v, v * 0.98, v * 0.94))
 	img.generate_mipmaps()

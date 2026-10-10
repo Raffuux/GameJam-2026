@@ -50,9 +50,14 @@ En fond : murs de briques de la ruelle, une épicerie au sud, et un skyline de g
 ## Ambiance
 
 Fin de journée sous un ciel lourd et une brume de pollution. Un post-traitement plein écran (`scripts/fx/film_look.gd`)
-ajoute du grain de film animé, un vignettage et des couleurs un peu désaturées. Toutes les surfaces reçoivent une
-texture de crasse en coordonnées monde (`Tex.grime()`). Les réglages (grain, vignettage, contraste, saturation, teinte)
-sont en haut du shader.
+ajoute un vignettage et des couleurs un peu désaturées (le grain de film est coupé, `grain = 0.0`). Toutes les
+surfaces reçoivent une texture de crasse marquée en coordonnées monde (`Tex.grime()`). Les réglages (grain,
+vignettage, contraste, saturation, teinte) sont en haut du shader.
+
+Coins sales (`_dirty_areas()` dans `city.gd`) : jusqu'à 17 terrains vagues près des rues, 5 à la Décharge et 3 par autre quartier.
+Chacun a des taches d'huile et de boue, un tas d'ordures (sacs, canettes, papiers, cartons, capsules, mégots) et
+souvent un feu (8 fois sur 10 à la Décharge, 1 sur 2 ailleurs), dans un bidon rouillé ou à même un tas de cendres.
+Les feux (`scripts/fx/fire.gd`) sont des particules de flammes et de fumée avec une lumière orange qui vacille.
 
 ## Jouer
 

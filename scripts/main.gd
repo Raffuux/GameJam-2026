@@ -260,6 +260,13 @@ func _run_test_mode(args: PackedStringArray) -> void:
 		["06-chantier", -330.0, 250.0, -1.0, 2.4, -0.45, 160.0],
 		["07-vue-haute", 0.0, 0.0, 420.0, 0.6, -0.6, 220.0],
 	]
+	# les coins sales (tas d'ordures, feux)
+	for k in mini(3, city._dirty.size()):
+		var d: Vector2 = city._dirty[k][0]
+		# caméra placée côté centre-ville, pour ne pas finir dans un mur d'enceinte
+		# vue plongeante au-dessus du tas, caméra côté centre-ville (hors des murs d'enceinte)
+		var to_c := -d.normalized()
+		views.append(["11-sale-%d" % k, d.x, d.y, 25.0, atan2(to_c.x, to_c.y), -0.6, 80.0])
 	for v in views:
 		spider.set_physics_process(false)
 		spider.global_position = Vector3(v[1], v[3] if v[3] >= 0.0 else 8.0, v[2])

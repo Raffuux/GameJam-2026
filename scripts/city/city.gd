@@ -7,6 +7,7 @@ const Builder := preload("res://scripts/city/builder.gd")
 const Props := preload("res://scripts/city/props.gd")
 const Tex := preload("res://scripts/city/textures.gd")
 const GangBuildings := preload("res://scripts/city/gang_buildings.gd")
+const Fire := preload("res://scripts/fx/fire.gd")
 
 ## Hauteurs des couches de la chaussée (le sol est à 0).
 const SIDEWALK_Y := 0.4
@@ -22,6 +23,8 @@ var road_samples: Array = []
 var _grid := {}
 ## Immeubles déjà posés (pour éviter les chevauchements) : { c, hx, hz, rot }
 var _placed: Array = []
+## Coins sales déjà posés : [centre, rayon]
+var _dirty: Array = []
 ## Points de trottoir par quartier, pour faire patrouiller les gangs : [pos, direction]
 var sidewalk_points := {}
 
@@ -52,6 +55,7 @@ func build(parent: Node3D) -> Builder:
 	_infill_buildings()
 	_street_props()
 	_territory_markers()
+	_dirty_areas()
 	_vegetation()
 	_tisseuses_webs()
 	_backdrop()
@@ -891,6 +895,9 @@ func _free_ground(p: Vector2, grid: Dictionary, margin: float) -> bool:
 		return false
 	if p.distance_to(Layout.SITES["bank"]["pos"]) < 100.0:
 		return false
+	for d in _dirty:
+		if p.distance_to(d[0]) < d[1] * 1.05:
+			return false
 	for f in grid.get(Vector2i(floori(p.x / CELL), floori(p.y / CELL)), []):
 		if _dist_to_obb(p, f["c"], f["hx"], f["hz"], f["rot"]) < margin:
 			return false
@@ -965,3 +972,87 @@ func _vegetation() -> void:
 			xf.append(Transform3D(Basis(Vector3.UP, b.rand(0, TAU)).scaled(Vector3.ONE * h), Vector3(p.x, 0, p.y)) * mesh[1])
 		_multimesh_mesh(mesh[0], null, xf)
 	print("vegetation: ", tufts.size(), " touffes")
+
+
+# ---------- Coins sales ----------
+
+## Combien de coins sales par quartier : la Décharge en a le plus.
+const DIRTY_PER_ZONE := {"nuee": 5, "colonie": 3, "prieurs": 3, "tisseuses": 3, "centre": 3}
+
+
+## Des terrains vagues crasseux près des rues : taches d'huile, tas d'ordures, cartons, et souvent un feu.
+func _dirty_areas() -> void:
+	var grid := _building_grid()
+	for zone in DIRTY_PER_ZONE:
+		var made := 0
+		var tries := 0
+		while made < DIRTY_PER_ZONE[zone] and tries < 3000:
+			tries += 1
+			var p := Vector2(b.rand(-Layout.HALF, Layout.HALF), b.rand(-Layout.HALF, Layout.HALF)) * 0.85
+			if Layout.zone_at(p.x, p.y) != zone:
+				continue
+			var r := b.rand(20.0, 34.0)
+			var clear: float = road_clearance(p, -1, 120.0)[0]
+			if clear < SIDEWALK_W + r * 0.6 or clear > 70.0 or _in_site(p, -20.0):
+				continue
+			if not _free_ground(p, grid, r * 0.8):
+				continue
+			var too_close := false
+			for d in _dirty:
+				if p.distance_to(d[0]) < 140.0:
+					too_close = true
+			if too_close:
+				continue
+			_dirty_area(p, r, zone)
+			made += 1
+
+
+func _dirty_area(c: Vector2, r: float, zone: String) -> void:
+	_dirty.append([c, r])
+	var center := Vector3(c.x, 0, c.y)
+	# taches d'huile et de boue, superposées
+	for k in b.rng.randi_range(3, 5):
+		var off := Vector3(b.rand(-r, r), 0, b.rand(-r, r)) * 0.4
+		var stain := b.cyl(center + off + Vector3(0, 0.04 + k * 0.03, 0), 0, 0, 0.05, b.mat(b.pick([Color("2a2016"), Color("1d1a17"), Color("3b2c1c")]), 0.4), false, 14)
+		var sr := b.rand(r * 0.35, r * 0.75)
+		stain.mesh.top_radius = sr
+		stain.mesh.bottom_radius = sr
+		stain.scale = Vector3(1.0, 1.0, b.rand(0.6, 1.0))
+		stain.rotation.y = b.rand(0, TAU)
+	# le tas
+	for k in b.rng.randi_range(5, 9):
+		var a := b.rand(0, TAU)
+		var d := b.rand(0.0, r * 0.7)
+		var p := center + Vector3(cos(a) * d, 0, sin(a) * d)
+		match b.rng.randi_range(0, 5):
+			0, 1:
+				Props.trash_bag(b, p, b.rand(5, 10))
+			2:
+				Props.soda_can(b, p, b.pick([Color("d62828"), Color("2a9d8f"), Color("f4a261")]), true)
+			3:
+				Props.paper_ball(b, p, b.rand(2.0, 4.0))
+			4:
+				# un morceau de carton écrasé
+				b.box(p, Vector3(b.rand(12, 22), 0.8, b.rand(10, 18)), b.mat(Color("8f7048"), 1.0), true, b.rand(0, TAU))
+			5:
+				Props.bottle_cap(b, p, b.pick([Color("c8312a"), Color("2a6fd6"), Color("e0b23a")]))
+	for k in b.rng.randi_range(4, 8):
+		Props.cigarette_butt(b, center + Vector3(b.rand(-r, r), 0.1, b.rand(-r, r)) * 0.8)
+	# un feu une fois sur deux, plus souvent à la Décharge : dans un bidon rouillé ou à même le tas
+	if b.rng.randf() < (0.8 if zone == "nuee" else 0.5):
+		var fire_pos := center + Vector3(b.rand(-r, r), 0, b.rand(-r, r)) * 0.3
+		if b.rng.randf() < 0.5:
+			var rust := b.mat(Color("6e3b22"), 0.9, {"metallic": 0.4})
+			b.cyl(fire_pos, 6.0, 6.0, 15.0, rust, true, 14, null, "")
+			b.cyl(fire_pos + Vector3(0, 14.9, 0), 5.4, 5.4, 0.3, Color("120c08"), false, 14)
+			b.cyl(fire_pos + Vector3(0, 5, 0), 6.2, 6.2, 1.2, b.mat(Color("4a2a18"), 0.9, {"metallic": 0.4}), false, 14)
+			fire_pos.y = 15.0
+			var f := Fire.new(11.0)
+			f.position = fire_pos
+			b.root.add_child(f)
+		else:
+			# braises : un tas de cendres noires sous les flammes
+			b.cyl(fire_pos, 3, r * 0.3, 3.0, b.mat(Color("1a1512"), 1.0), true, 12)
+			var f := Fire.new(17.0)
+			f.position = fire_pos + Vector3(0, 2, 0)
+			b.root.add_child(f)

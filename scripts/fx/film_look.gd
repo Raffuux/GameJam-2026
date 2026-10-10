@@ -5,7 +5,7 @@ extends CanvasLayer
 const SHADER := """
 shader_type canvas_item;
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;
-uniform float grain = 0.1;
+uniform float grain = 0.0;
 uniform float vignette = 0.65;
 uniform float contrast = 1.08;
 uniform float saturation = 0.8;
