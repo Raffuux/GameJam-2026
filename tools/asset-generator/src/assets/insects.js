@@ -7,6 +7,9 @@ import { PALETTE, mat, mesh, blob, segment, tube, wingMat, tag } from './common.
 
 // Adds jointed legs to `root` and returns an update(t, speed) for a tripod gait.
 // Each spec: { y, z, x, reach, spread } where spread > 0 points the leg forward.
+// Leg thickness multiplier for the chunky pixel-art style.
+const LEG_CHUNK = 1.8;
+
 function addLegs(root, specs, { radius, material, lift = 0.35, swing = 0.35 }) {
   const legs = [];
   specs.forEach((spec, index) => {
@@ -17,8 +20,16 @@ function addLegs(root, specs, { radius, material, lift = 0.35, swing = 0.35 }) {
       hip.rotation.y = baseYaw;
       const knee = [side * spec.reach * 0.45, spec.reach * 0.35, 0];
       const foot = [side * spec.reach, -spec.y, 0];
-      hip.add(segment([0, 0, 0], knee, radius, material));
-      hip.add(segment(knee, foot, radius * 0.75, material));
+      // Chunky legs like the jumping spider: thick round segments with knobbly joints.
+      const r = radius * LEG_CHUNK;
+      const upper = segment([0, 0, 0], knee, r, material, 10);
+      const lower = segment(knee, foot, r * 0.8, material, 10);
+      upper.userData.limb = lower.userData.limb = true;
+      const joint = blob(r * 0.95, r * 0.95, r * 0.95, material, 2);
+      joint.position.set(...knee);
+      const toe = blob(r * 0.7, r * 0.7, r * 0.7, material, 2);
+      toe.position.set(...foot);
+      hip.add(upper, lower, joint, toe);
       root.add(hip);
       legs.push({ hip, side, baseYaw, phase: ((index + (side > 0 ? 1 : 0)) % 2) * Math.PI });
     }

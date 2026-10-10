@@ -3,7 +3,7 @@
 // sheet.html?gang=prieurs or sheet.html?lineup (see scripts/design-sheets.mjs).
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { CATALOG, GANGS, applyGang, createAsset, weather } from './assets/index.js';
+import { CATALOG, GANGS, applyGang, createAsset, pixelize } from './assets/index.js';
 import { createSpider, createMantis, createFly, createAnt } from './assets/insects.js';
 
 const W = 1400;
@@ -176,7 +176,7 @@ function palette(object, max = 6) {
   const weight = new Map();
   object.traverse((o) => {
     if (!o.isMesh || o.material.transparent || o.material.emissive?.getHex()) return;
-    const k = o.material.color.getHex();
+    const k = o.material.userData.baseColor ?? o.material.color.getHex();
     weight.set(k, (weight.get(k) ?? 0) + o.geometry.attributes.position.count);
   });
   return [...weight.entries()].sort((a, b) => b[1] - a[1]).slice(0, max).map(([k]) => k);
@@ -285,7 +285,7 @@ function lineup() {
     gangs.forEach((gang, c) => {
       let object = FACTORY[s]();
       if (gang) object = applyGang(object, gang.id);
-      object = rest(weather(object, { seed: 3 }));
+      object = rest(pixelize(object));
       const stage = studio(object);
       const rect = rects[r * gangs.length + c];
       const own = gang && gang.species === s;

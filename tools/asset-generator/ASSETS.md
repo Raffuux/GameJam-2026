@@ -23,6 +23,14 @@ objets, coulures sur ce qui est haut et rouille sur le métal, dans les couleurs
 Dans les .glb, les textures sont intégrées (une par matière) : rien à régler dans Godot. Les réglages
 sont en haut de `grit.js` (`GRIT`).
 
+### Créatures : style pixel-art du jeu
+
+Les insectes (et les membres de gang) suivent le style de l'araignée sauteuse de good-spider-hood
+(`src/assets/pixel.js`) : formes lisses, pattes épaisses avec des articulations rondes, petites textures
+pixel-art (fourrure mouchetée, bandes claires aux articulations) en filtrage « nearest ». Chaque matériau
+reçoit une rampe de 5 couleurs tirée de sa couleur. Les variantes de l'araignée sauteuse elle-même
+(durag, joint, tatouages, fille) sont dans `tools/spider-variants/` et `assets/spider_variants/`.
+
 ## Utilisation dans Godot 4
 
 Le code Three.js sert d'outil de génération : le jeu utilise les .glb.

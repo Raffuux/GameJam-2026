@@ -9,6 +9,7 @@ import * as city from './city.js';
 import * as habitats from './habitats.js';
 import * as hazards from './hazards.js';
 import { weather } from './grit.js';
+import { pixelize } from './pixel.js';
 
 export * from './nature.js';
 export * from './objects.js';
@@ -18,6 +19,7 @@ export * from './city.js';
 export * from './habitats.js';
 export * from './hazards.js';
 export { weather } from './grit.js';
+export { pixelize, pixelTextureData } from './pixel.js';
 export { SURFACES, surfaceTextureData } from './textures.js';
 export { PALETTE } from './common.js';
 
@@ -88,9 +90,13 @@ for (const gang of Object.values(gangs.GANGS)) {
 }
 
 // Every asset goes through the grime pass (darker palette, textures, dirt, rust).
+// Creatures use the pixel-art style of the game's jumping spider instead.
 for (const entry of CATALOG) {
   const make = entry.create;
-  entry.create = (options = {}) => weather(make(options), { seed: options.seed ?? 1 });
+  entry.create = (options = {}) => {
+    const object = make(options);
+    return object.userData.category === 'insect' ? pixelize(object) : weather(object, { seed: options.seed ?? 1 });
+  };
 }
 
 export function createAsset(id, options) {

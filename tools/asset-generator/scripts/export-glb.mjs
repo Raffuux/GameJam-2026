@@ -7,7 +7,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { deflateSync, crc32 } from 'node:zlib';
 import * as THREE from 'three';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
-import { CATALOG, SURFACES, surfaceTextureData } from '../src/assets/index.js';
+import { CATALOG, SURFACES, surfaceTextureData, pixelTextureData } from '../src/assets/index.js';
 
 // GLTFExporter reads blobs through FileReader, which Node does not ship.
 globalThis.FileReader ??= class {
@@ -92,6 +92,12 @@ function encodePNG({ data, size }) {
   ]);
 }
 const PNGS = Object.fromEntries(SURFACES.map((name) => [name, encodePNG(surfaceTextureData(name))]));
+// Texture key of a material: its surface prefix, or the whole name for pixel-art creatures.
+const textureKey = (name = '') => (name.startsWith('pix_') ? name : name.split('_')[0]);
+function pngFor(key) {
+  if (!PNGS[key] && key.startsWith('pix_')) PNGS[key] = encodePNG(pixelTextureData(key));
+  return PNGS[key];
+}
 
 // GLTFExporter cannot encode images in Node, so the surface textures are
 // spliced into the .glb afterwards. Each material's name starts with its
@@ -103,11 +109,12 @@ function addSurfaceTextures(glb) {
   const binStart = 20 + jsonLen;
   const binLen = buf.readUInt32LE(binStart);
   let bin = buf.subarray(binStart + 8, binStart + 8 + binLen);
-  const used = [...new Set((json.materials ?? []).map((m) => m.name?.split('_')[0]).filter((n) => PNGS[n]))];
+  const used = [...new Set((json.materials ?? []).map((m) => textureKey(m.name)).filter((n) => pngFor(n)))];
   if (!used.length) return buf;
   json.images = [];
   json.textures = [];
-  json.samplers = [{ magFilter: 9729, minFilter: 9987, wrapS: 10497, wrapT: 10497 }];
+  // Smooth sampling for surfaces, nearest for the pixel-art creatures.
+  json.samplers = [{ magFilter: 9729, minFilter: 9987, wrapS: 10497, wrapT: 10497 }, { magFilter: 9728, minFilter: 9728, wrapS: 10497, wrapT: 10497 }];
   const textureOf = {};
   for (const name of used) {
     const png = PNGS[name];
@@ -115,12 +122,12 @@ function addSurfaceTextures(glb) {
     bin = Buffer.concat([bin, png, Buffer.alloc((4 - (png.length % 4)) % 4)]);
     json.bufferViews.push({ buffer: 0, byteOffset: offset, byteLength: png.length });
     json.images.push({ bufferView: json.bufferViews.length - 1, mimeType: 'image/png', name });
-    json.textures.push({ sampler: 0, source: json.images.length - 1 });
+    json.textures.push({ sampler: name.startsWith('pix_') ? 1 : 0, source: json.images.length - 1 });
     textureOf[name] = json.textures.length - 1;
   }
   json.buffers[0].byteLength = bin.length;
   for (const m of json.materials) {
-    const t = textureOf[m.name?.split('_')[0]];
+    const t = textureOf[textureKey(m.name)];
     if (t === undefined) continue;
     m.pbrMetallicRoughness ??= {};
     m.pbrMetallicRoughness.baseColorTexture = { index: t };
