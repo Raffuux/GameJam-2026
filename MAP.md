@@ -25,6 +25,12 @@ tendus de grosses toiles (avec cocons et fils d'ancrage sur lesquels on marche) 
 canettes empilées, bouteilles et cartons pour la Nuée, boîtes de sardines et temples de feuilles pour les Prieurs.
 Si le fil des assets fournit `assets/models/gang_<gang>_<n>.glb`, ces modèles sont utilisés en priorité.
 
+Au cœur de chaque territoire, sur la place libre la plus proche du centre du quartier, se trouve le repaire du gang
+(`habitat_<gang>.glb` du fil des assets), entrée tournée vers la rue : le Repaire des Tisseuses, le Nid des Prieurs,
+la Décharge de la Nuée et la Grande Fourmilière. Ils apparaissent sur la carte.
+
+![Les repaires](docs/map/repaires.png)
+
 ![La Toile](docs/map/toile.png)
 ![Les fourmilières](docs/map/chantier.png)
 

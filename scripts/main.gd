@@ -362,3 +362,18 @@ func _overview_shots(out: String) -> void:
 			await get_tree().process_frame
 		get_viewport().get_texture().get_image().save_png(out + "/" + v[0] + ".png")
 		print("shot ", v[0])
+	# gros plans sur les repaires de gangs
+	cam.camera.projection = Camera3D.PROJECTION_PERSPECTIVE
+	var k := 0
+	for l in city.b.landmarks:
+		if not l["name"] in City.HABITAT_NAMES.values():
+			continue
+		cam.global_position = l["pos"] + Vector3(0, 20, 0)
+		cam.rotation = Vector3(-0.42, 0.6 + k * 1.3, 0)
+		cam.arm.spring_length = 190.0
+		k += 1
+		for f in 30:
+			await get_tree().process_frame
+		var file := "repaire-%d" % k
+		get_viewport().get_texture().get_image().save_png(out + "/" + file + ".png")
+		print("shot ", file, " ", l["name"])

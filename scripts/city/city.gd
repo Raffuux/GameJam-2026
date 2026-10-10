@@ -47,6 +47,7 @@ func build(parent: Node3D) -> Builder:
 	_ground()
 	_roads()
 	_sites()
+	_habitats()
 	_frontage_buildings()
 	_infill_buildings()
 	_street_props()
@@ -529,6 +530,56 @@ func _territory_markers() -> void:
 
 
 # ---------- Lieux spéciaux ----------
+
+## Le repaire de chaque gang (modèle habitat_<gang> du fil des assets), au cœur de son territoire,
+## sur la place libre la plus proche du centre du quartier, entrée tournée vers la rue.
+const HABITAT_NAMES := {"tisseuses": "Le Repaire des Tisseuses", "prieurs": "Le Nid des Prieurs", "nuee": "La Décharge de la Nuée", "colonie": "La Grande Fourmilière"}
+const HABITAT_SIZE := 95.0
+
+
+func _habitats() -> void:
+	for zone in HABITAT_NAMES:
+		if not ResourceLoader.exists("res://assets/models/habitat_%s.glb" % zone):
+			continue
+		# la place libre la plus proche du cœur du quartier ; plus petit s'il n'y a pas la place
+		for size in [HABITAT_SIZE, HABITAT_SIZE * 0.8, HABITAT_SIZE * 0.65]:
+			var c = _free_spot(zone, size * 0.5)
+			if c != null:
+				_place_habitat(zone, c, size)
+				break
+
+
+func _free_spot(zone: String, half: float):
+	var seed: Vector2 = Layout.ZONES[zone]["seed"]
+	var best = null
+	var best_d := INF
+	for i in range(-22, 23):
+		for j in range(-22, 23):
+			var c := seed + Vector2(i, j) * 12.0
+			var d := c.distance_to(seed)
+			if d >= best_d or Layout.zone_at(c.x, c.y) != zone:
+				continue
+			if absf(c.x) > Layout.HALF - half - 15.0 or absf(c.y) > Layout.HALF - half - 15.0:
+				continue
+			if road_clearance(c, -1, 200.0)[0] < half * 1.15 + SIDEWALK_W or _in_site(c, -half * 1.2):
+				continue
+			best = c
+			best_d = d
+	return best
+
+
+func _place_habitat(zone: String, c: Vector2, size: float) -> void:
+	var near: Array = road_clearance(c, -1, 300.0)
+	var dir: Vector2 = (near[1]["p"] - c).normalized()
+	var rot := atan2(dir.x, dir.y)
+	var got := b.model("habitat_" + zone, Vector3(c.x, 0, c.y), rot, Vector3(size, 0, size), true, null, "landmark")
+	if got == Vector3.ZERO:
+		return
+	_placed.append({"c": c, "hx": got.x / 2.0 + 4.0, "hz": got.z / 2.0 + 4.0, "rot": rot})
+	b.landmark(HABITAT_NAMES[zone], Vector3(c.x, 0, c.y))
+	b.spot(zone, Vector3(c.x, got.y + 2.0, c.y))
+	_gang_flag(zone, Vector3(c.x, 0, c.y) + Vector3(dir.x, 0, dir.y) * (got.z / 2.0 + 6.0), 40.0)
+
 
 ## Un groupe posé sur un lieu spécial, tourné pour que son entrée (+z) regarde la rue la plus proche.
 func _site_group(id: String) -> Node3D:
