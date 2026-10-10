@@ -7,7 +7,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { deflateSync, crc32 } from 'node:zlib';
 import * as THREE from 'three';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
-import { CATALOG, SURFACES, surfaceTextureData, pixelTextureData } from '../src/assets/index.js';
+import { CATALOG, SURFACES, surfaceTextureData, pixelTextureData, pixelize } from '../src/assets/index.js';
+import { OUTFITS, applyOutfit } from '../src/assets/outfits.js';
 
 // GLTFExporter reads blobs through FileReader, which Node does not ship.
 globalThis.FileReader ??= class {
@@ -147,7 +148,10 @@ function addSurfaceTextures(glb) {
   return Buffer.concat([header, chunkHead(jsonBuf.length, 0x4e4f534a), jsonBuf, chunkHead(bin.length, 0x004e4942), bin]);
 }
 
-const outDir = new URL('../../../assets/models/', import.meta.url);
+// `--outfits` exports every outfit of every bug to assets/creature_variants/ instead.
+const OUTFIT_MODE = process.argv.includes('--outfits');
+const OUTFIT_ANIMALS = ['ant', 'bee', 'beetle', 'caterpillar', 'fly', 'ladybug', 'mantis'];
+const outDir = new URL(OUTFIT_MODE ? '../../../assets/creature_variants/' : '../../../assets/models/', import.meta.url);
 await mkdir(outDir, { recursive: true });
 const exporter = new GLTFExporter();
 
@@ -160,7 +164,18 @@ for (const gang of ['tisseuses', 'prieurs', 'nuee', 'colonie']) {
   }
 }
 
-for (const entry of [...CATALOG, ...variants]) {
+const outfits = OUTFIT_ANIMALS.flatMap((animal) => {
+  const base = CATALOG.find((e) => e.id === animal);
+  return OUTFITS.map((outfit) => ({
+    id: `${animal}_${outfit}`,
+    clip: CLIP_NAMES[animal],
+    create: () => pixelize(applyOutfit(base.create(), outfit)),
+  }));
+});
+const only = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+const entries = (OUTFIT_MODE ? outfits : [...CATALOG, ...variants]).filter((e) => !only.length || only.includes(e.id));
+
+for (const entry of entries) {
   const object = entry.create();
   // Unique, readable node names so animation tracks (and Godot) can find them.
   let n = 0;
@@ -171,7 +186,7 @@ for (const entry of [...CATALOG, ...variants]) {
   const animations = [];
   // Flags wave by deforming their mesh, which glTF node animation cannot carry.
   if (updaters.length && !entry.id.startsWith('flag_')) {
-    const clip = bakeAnimation(object, updaters, CLIP_NAMES[entry.id] ?? 'walk');
+    const clip = bakeAnimation(object, updaters, entry.clip ?? CLIP_NAMES[entry.id] ?? 'walk');
     if (clip) animations.push(clip);
   }
   object.traverse((o) => delete o.userData.update);

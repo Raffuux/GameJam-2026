@@ -31,6 +31,22 @@ pixel-art (fourrure mouchetée, bandes claires aux articulations) en filtrage «
 reçoit une rampe de 5 couleurs tirée de sa couleur. Les variantes de l'araignée sauteuse elle-même
 (durag, joint, tatouages, fille) sont dans `tools/spider-variants/` et `assets/spider_variants/`.
 
+### Tenues des créatures
+
+`src/assets/outfits.js` habille les 7 insectes (fourmi, abeille, scarabée, chenille, mouche,
+coccinelle, mante) avec les mêmes tenues que les variantes de l'araignée sauteuse :
+
+- `durag_<couleur>`, `bandana_<couleur>` (paisley sur le bas du visage), `cap_<couleur>`
+  (casquette à l'endroit) et `capback_<couleur>` (à l'envers), en `green`, `purple`, `red`,
+  `blue` et `black` ;
+- `joint` (gros joint allumé, braise, fumée, petite lumière), `skull` (tatouages tête de mort
+  pixel-art sur le dos et la tête) et `girl` (yeux agrandis, cils recourbés, talons rouges).
+
+Le bandana et les tatouages sont plaqués sur le corps par lancer de rayons, donc ils suivent la
+forme de chaque tête. Export : `npm run export:outfits` écrit les 161 modèles
+`<animal>_<tenue>.glb` dans `assets/creature_variants/`, avec leur animation (`walk`, `hover`
+pour l'abeille). Planches : `assets/creature_variants/sheets/<animal>_tenues.png`.
+
 ## Utilisation dans Godot 4
 
 Le code Three.js sert d'outil de génération : le jeu utilise les .glb.

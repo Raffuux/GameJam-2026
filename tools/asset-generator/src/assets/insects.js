@@ -18,6 +18,7 @@ function addLegs(root, specs, { radius, material, lift = 0.35, swing = 0.35 }) {
       hip.position.set(side * (spec.x ?? 0), spec.y, spec.z);
       const baseYaw = -side * spec.spread;
       hip.rotation.y = baseYaw;
+      hip.userData.leg = true;
       const knee = [side * spec.reach * 0.45, spec.reach * 0.35, 0];
       const foot = [side * spec.reach, -spec.y, 0];
       // Chunky legs like the jumping spider: thick round segments with knobbly joints.
@@ -29,6 +30,7 @@ function addLegs(root, specs, { radius, material, lift = 0.35, swing = 0.35 }) {
       joint.position.set(...knee);
       const toe = blob(r * 0.7, r * 0.7, r * 0.7, material, 2);
       toe.position.set(...foot);
+      toe.userData.foot = { radius: r * 0.7, side };
       hip.add(upper, lower, joint, toe);
       root.add(hip);
       legs.push({ hip, side, baseYaw, phase: ((index + (side > 0 ? 1 : 0)) % 2) * Math.PI });
@@ -48,6 +50,7 @@ function addEyes(root, { x, y, z, r, color = PALETTE.black }) {
   for (const side of [1, -1]) {
     const eye = blob(r, r, r, eyeMat);
     eye.position.set(side * x, y, z);
+    eye.userData.eye = { radius: r, side };
     root.add(eye);
   }
 }
@@ -59,6 +62,7 @@ function addAntennae(root, { x, y, z, length, elbow = false, material }) {
       ? [[side * x, y, z], [side * (x + length * 0.15), y + length * 0.45, z + length * 0.1], [side * (x + length * 0.35), y + length * 0.5, z + length * 0.6]]
       : [[side * x, y, z], [side * (x + length * 0.2), y + length * 0.5, z + length * 0.4], [side * (x + length * 0.45), y + length * 0.7, z + length * 0.8]];
     const a = tube(pts, length * 0.025, material, 6, 3);
+    a.userData.antenna = true;
     root.add(a);
     parts.push(a);
   }
@@ -109,6 +113,7 @@ export function createFly() {
   root.userData.anchors = {
     neck: { position: [0, 0.47, 0.25], radius: 0.17 },
     head: { position: [0, 0.54, 0.33], radii: [0.15, 0.11, 0.14] },
+    mouth: { position: [0.02, 0.42, 0.47], size: 0.15 },
     back: { position: [0, 0.6, -0.32], size: 0.2 },
   };
   return tag(root, 'fly', { category: 'insect', heightCm: 0.7, animated: true });
@@ -147,6 +152,7 @@ export function createMantis() {
   for (const side of [1, -1]) {
     const arm = new THREE.Group();
     arm.position.set(side * 0.18, 0, 1.9);
+    arm.userData.leg = true;
     arm.add(segment([0, 0, 0], [side * 0.15, -0.6, 0.5], 0.12, green));
     arm.add(segment([side * 0.15, -0.6, 0.5], [side * 0.18, 0.4, 1.0], 0.14, green));
     arm.add(segment([side * 0.18, 0.4, 1.0], [side * 0.15, -0.5, 0.95], 0.08, dark));
@@ -167,6 +173,7 @@ export function createMantis() {
   root.userData.anchors = {
     neck: { parent: 'mantis_pronotum', position: [0, 0, 2.0], radius: 0.3 },
     head: { parent: 'mantis_head', position: [0, 0.2, 0.05], radii: [0.36, 0.2, 0.3], tilt: 0.75 },
+    mouth: { parent: 'mantis_head', position: [0.03, -0.2, 0.22], size: 0.3 },
     back: { position: [0, 1.95, -0.9], size: 0.55, tilt: -0.12 },
   };
   return tag(root, 'mantis', { category: 'insect', heightCm: 3.8, animated: true });
@@ -201,6 +208,7 @@ export function createAnt({ color = PALETTE.ant } = {}) {
   root.userData.anchors = {
     neck: { position: [0, 0.36, 0.23], radius: 0.1 },
     head: { position: [0, 0.42, 0.34], radii: [0.14, 0.09, 0.14] },
+    mouth: { position: [0.03, 0.32, 0.5], size: 0.14 },
     back: { position: [0, 0.53, -0.42], size: 0.16 },
   };
   return tag(root, 'ant', { category: 'insect', heightCm: 0.5, animated: true });
@@ -226,6 +234,7 @@ export function createLadybug() {
   }
   const line = mesh(new THREE.BoxGeometry(0.015, 0.02, 0.9), spotMat);
   line.position.set(0, 0.51, 0);
+  line.userData.noWrap = true;
   root.add(line);
   const head = blob(0.2, 0.14, 0.13, spotMat);
   head.position.set(0, 0.2, 0.47);
@@ -242,6 +251,13 @@ export function createLadybug() {
     { y: 0.15, z: -0.16, x: 0.15, reach: 0.32, spread: -0.6 },
   ], { radius: 0.025, material: spotMat, lift: 0.25 });
   root.userData.update = (t, speed = 1) => walk(t, speed);
+  root.userData.anchors = {
+    neck: { position: [0, 0.2, 0.42], radius: 0.16 },
+    head: { position: [0, 0.27, 0.48], radii: [0.19, 0.09, 0.14] },
+    mouth: { position: [0.03, 0.16, 0.6], size: 0.16 },
+    back: { position: [0, 0.53, -0.08], size: 0.22 },
+    eyes: { positions: [[0.11, 0.27, 0.575], [-0.11, 0.27, 0.575]], radius: 0.04 },
+  };
   return tag(root, 'ladybug', { category: 'insect', heightCm: 0.55, animated: true });
 }
 
@@ -273,6 +289,12 @@ export function createBeetle() {
     { y: 0.55, z: -0.6, x: 0.7, reach: 1.6, spread: -0.7 },
   ], { radius: 0.12, material: dark, lift: 0.25, swing: 0.25 });
   root.userData.update = (t, speed = 1) => walk(t, speed * 0.5);
+  root.userData.anchors = {
+    neck: { position: [0, 0.75, 1.75], radius: 0.45 },
+    head: { position: [0, 1.25, 1.1], radii: [0.88, 0.42, 0.62] },
+    mouth: { position: [0.15, 0.55, 2.3], size: 0.45 },
+    back: { position: [0, 1.52, -0.55], size: 0.6 },
+  };
   return tag(root, 'beetle', { category: 'insect', heightCm: 2.7, animated: true });
 }
 
@@ -280,6 +302,7 @@ export function createBeetle() {
 export function createBee() {
   const root = new THREE.Group();
   const body = new THREE.Group();
+  body.name = 'bee_body';
   body.position.y = 0.55;
   root.add(body);
   const yellow = mat(PALETTE.beeYellow, { roughness: 0.6 });
@@ -326,6 +349,12 @@ export function createBee() {
     body.rotation.x = Math.sin(t * 1.4) * 0.08;
     for (const { pivot, side } of wings) pivot.rotation.z = side * Math.sin(t * 70) * 0.5;
   };
+  root.userData.anchors = {
+    neck: { parent: 'bee_body', position: [0, 0, 0.32], radius: 0.18 },
+    head: { parent: 'bee_body', position: [0, 0.07, 0.42], radii: [0.18, 0.12, 0.13] },
+    mouth: { parent: 'bee_body', position: [0.02, -0.08, 0.54], size: 0.18 },
+    back: { parent: 'bee_body', position: [0, 0.3, -0.45], size: 0.2 },
+  };
   return tag(root, 'bee', { category: 'insect', heightCm: 1.2, animated: true });
 }
 
@@ -339,6 +368,7 @@ export function createCaterpillar({ segments = 11 } = {}) {
   for (let i = 0; i < segments; i++) {
     const r = i === 0 ? 0.42 : 0.36 + Math.sin((i / segments) * Math.PI) * 0.08;
     const seg = blob(r, r, r * 0.9, i % 3 === 1 ? band : green);
+    seg.name = i === 0 ? 'caterpillar_head' : `caterpillar_seg${i}`;
     seg.position.set(0, r, 2.5 - i * 0.55);
     root.add(seg);
     // Stubby prolegs on most segments.
@@ -346,6 +376,7 @@ export function createCaterpillar({ segments = 11 } = {}) {
       for (const side of [1, -1]) {
         const leg = blob(0.08, 0.1, 0.08, green, 0);
         leg.position.set(side * r * 0.6, -r * 0.85, 0);
+        leg.userData.foot = { radius: 0.08, side };
         seg.add(leg);
       }
     }
@@ -361,6 +392,12 @@ export function createCaterpillar({ segments = 11 } = {}) {
       const wave = Math.max(0, Math.sin(t * 3 * speed - i * 0.7));
       seg.position.y = r + wave * 0.25 * speed;
     });
+  };
+  root.userData.anchors = {
+    neck: { parent: 'caterpillar_head', position: [0, -0.05, -0.15], radius: 0.36 },
+    head: { parent: 'caterpillar_head', position: [0, 0.2, -0.03], radii: [0.4, 0.22, 0.36] },
+    mouth: { parent: 'caterpillar_head', position: [0.05, -0.12, 0.36], size: 0.4 },
+    back: { parent: 'caterpillar_seg4', position: [0, 0.45, 0], size: 0.32 },
   };
   return tag(root, 'caterpillar', { category: 'insect', heightCm: 0.9, animated: true });
 }

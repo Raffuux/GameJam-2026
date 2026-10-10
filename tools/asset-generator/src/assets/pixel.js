@@ -30,6 +30,55 @@ function ramp(color) {
   return [shade(0.45, 0.1), shade(0.72), c.clone(), shade(1.25, -0.1), pale];
 }
 
+const CLOTH_WHITE = new THREE.Color(0xeee9dc);
+
+// Paisley motif on the 32px tile: 2 = white ink, 1 = dark outline, 0 = cloth.
+function paisley(x, y) {
+  for (const [cx, cy, flip] of [[9, 10, 1], [24, 24, -1]]) {
+    const dx = (x - cx) * flip;
+    const dy = (y - cy) * flip;
+    // Teardrop: a circle with a tail curling up-right.
+    const d = Math.hypot(dx, dy);
+    const tail = dy < 0 && dx > 0 && Math.abs(Math.hypot(dx - 4, dy) - 4) < 0.9 && dx < 7;
+    if (d < 1.5) return 1;
+    if (d < 3.6 || tail) return 2;
+    if (d < 4.6) return 1;
+    if (Math.abs(d - 5.6) < 0.5 && Math.round(Math.atan2(dy, dx) * 3) % 2 === 0) return 2;
+  }
+  if ((x === 24 && y === 7) || (x === 6 && y === 26) || (x === 17 && y === 16)) return 2;
+  return 0;
+}
+
+// Skull and crossbones on the 32px tile (row 0 at the top, which faces the head):
+// 0 = clear, 1 = shadow, 2 = ink, 3 = highlight.
+function skullPixel(x, y) {
+  const px = x + 0.5;
+  const py = y + 0.5;
+  const inEllipse = (cx, cy, rx, ry) => ((px - cx) / rx) ** 2 + ((py - cy) / ry) ** 2 <= 1;
+  const cranium = inEllipse(16, 11.5, 9.5, 9);
+  const jaw = px > 10.5 && px < 21.5 && py > 15 && py < 25.5 && !(py > 23.5 && (px < 11.5 || px > 20.5));
+  if (cranium || jaw) {
+    if (inEllipse(12, 13.5, 2.9, 3.3) || inEllipse(20, 13.5, 2.9, 3.3)) return 0;
+    if (py > 17 && py < 20.5 && Math.abs(px - 16) < (py - 17) * 0.55) return 0;
+    if (py > 21.5 && py < 25 && [13, 16, 19].some((tx) => Math.abs(px - tx) < 0.6)) return 0;
+    if (py > 21 && py < 22) return 1;
+    const edge = !(inEllipse(16, 11.5, 8.3, 7.8) || (px > 11.8 && px < 20.2 && py > 15 && py < 24.5));
+    if (edge) return 1;
+    if (inEllipse(13, 7, 3, 2.2)) return 3;
+    if (inEllipse(12, 13.5, 4, 4.3) || inEllipse(20, 13.5, 4, 4.3)) return 1;
+    return 2;
+  }
+  // Crossbones under the skull.
+  const bone = (ax, ay, bx, by) => {
+    const t = Math.max(0, Math.min(1, ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / ((bx - ax) ** 2 + (by - ay) ** 2)));
+    return Math.hypot(px - (ax + t * (bx - ax)), py - (ay + t * (by - ay)));
+  };
+  const ends = [[3.5, 20], [28.5, 20], [3.5, 30], [28.5, 30]];
+  if (ends.some(([ex, ey]) => Math.hypot(px - ex, py - ey) < 2.1)) return 2;
+  if (bone(4, 20.5, 28, 29.5) < 1.3 || bone(28, 20.5, 4, 29.5) < 1.3) return py < 25 ? 2 : 1;
+  return 0;
+}
+
 const data = new Map();
 
 // RGBA bytes of a pixel texture: kind is 'body' or 'limb'.
@@ -47,18 +96,31 @@ export function pixelTextureData(key) {
       if (r > 0.9) t = 3.6;
       else if (r > 0.78) t += 1.2;
       else if (r < 0.12) t -= 1.2;
+      if (kind === 'paisley') {
+        // Bandana print: cloth colour with white teardrops, dotted rings and specks.
+        t = 2 + (r > 0.85 ? -1 : 0);
+        const motif = paisley(x, y);
+        if (motif === 2) t = 5;
+        else if (motif === 1) t = 1;
+      }
+      let alpha = 255;
+      if (kind === 'skull') {
+        const s = skullPixel(x, y);
+        alpha = s ? 255 : 0;
+        t = [2, 1, 2, 3][s];
+      }
       if (kind === 'limb') {
         // Pale bands at both joints with ragged edges; the band runs around the leg (v along it).
         const v = y / SIZE;
         const edge = 0.2 + 0.06 * hash(x, 0, seed + 3);
         if (v < edge || v > 1 - edge * 0.7) t = r > 0.75 ? 2.6 : 4;
       }
-      const c = colors[Math.max(0, Math.min(4, Math.round(t)))];
+      const c = t === 5 ? CLOTH_WHITE : colors[Math.max(0, Math.min(4, Math.round(t)))];
       const i = (y * SIZE + x) * 4;
       out[i] = Math.round(THREE.MathUtils.clamp(c.r, 0, 1) ** (1 / 2.2) * 255);
       out[i + 1] = Math.round(THREE.MathUtils.clamp(c.g, 0, 1) ** (1 / 2.2) * 255);
       out[i + 2] = Math.round(THREE.MathUtils.clamp(c.b, 0, 1) ** (1 / 2.2) * 255);
-      out[i + 3] = 255;
+      out[i + 3] = alpha;
     }
   }
   const res = { data: out, size: SIZE };
@@ -136,14 +198,16 @@ export function pixelize(root) {
     if (m.transparent || m.emissive.getHex() !== 0 || (m.roughness <= 0.25 && m.metalness < 0.5)) return;
     if (mesh.userData.keepGeometry) return;
     const limb = !!mesh.userData.limb;
+    const kind = mesh.userData.pixKind ?? (limb ? 'limb' : 'body');
     let g = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry.clone();
-    if (!limb) {
+    if (!limb && !mesh.userData.keepUV) {
       for (const name of Object.keys(g.attributes)) if (name !== 'position' && name !== 'normal') g.deleteAttribute(name);
       g = toCreasedNormals(g, THREE.MathUtils.degToRad(70));
-      g.setAttribute('uv', boxUVs(g, mesh.matrixWorld, tile));
+      // The bandana print repeats more often so its motifs show on small heads.
+      g.setAttribute('uv', boxUVs(g, mesh.matrixWorld, kind === 'paisley' ? tile * 0.4 : tile));
     }
     mesh.geometry = g;
-    mesh.material = pixelMaterial(m, limb ? 'limb' : 'body');
+    mesh.material = pixelMaterial(m, kind);
   });
   return root;
 }

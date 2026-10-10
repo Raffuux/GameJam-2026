@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "export:glb": "node scripts/export-glb.mjs"
+    "export:glb": "node scripts/export-glb.mjs",
+    "export:outfits": "node scripts/export-glb.mjs --outfits"
   },
   "dependencies": {
     "three": "0.186.1"
