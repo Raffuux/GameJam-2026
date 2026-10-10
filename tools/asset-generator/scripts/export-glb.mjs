@@ -4,9 +4,10 @@
 // animation ("walk", "hover" for the bee, "swarm" for the dump) for an AnimationPlayer.
 // Run: npm run export:glb
 import { mkdir, writeFile } from 'node:fs/promises';
+import { deflateSync, crc32 } from 'node:zlib';
 import * as THREE from 'three';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
-import { CATALOG } from '../src/assets/index.js';
+import { CATALOG, grimeTextureData } from '../src/assets/index.js';
 
 // GLTFExporter reads blobs through FileReader, which Node does not ship.
 globalThis.FileReader ??= class {
@@ -64,6 +65,71 @@ function bakeAnimation(root, updaters, name) {
   return tracks.length ? new THREE.AnimationClip(name, LOOP_SECONDS, tracks) : null;
 }
 
+// Minimal PNG encoder for the RGBA grime texture.
+function encodePNG({ data, size }) {
+  const chunk = (type, body) => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(body.length);
+    const typed = Buffer.concat([Buffer.from(type, 'ascii'), body]);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(typed) >>> 0);
+    return Buffer.concat([len, typed, crc]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(size, 0);
+  ihdr.writeUInt32BE(size, 4);
+  ihdr.set([8, 6, 0, 0, 0], 8); // 8-bit RGBA
+  const rows = Buffer.alloc(size * (size * 4 + 1));
+  for (let y = 0; y < size; y++) {
+    rows[y * (size * 4 + 1)] = 0;
+    Buffer.from(data.buffer, data.byteOffset + y * size * 4, size * 4).copy(rows, y * (size * 4 + 1) + 1);
+  }
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', deflateSync(rows)),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
+}
+const GRIME_PNG = encodePNG(grimeTextureData());
+
+// GLTFExporter cannot encode images in Node, so the grime texture is spliced
+// into the .glb afterwards and set as every material's base colour texture.
+function addGrimeTexture(glb) {
+  const buf = Buffer.from(glb);
+  const jsonLen = buf.readUInt32LE(12);
+  const json = JSON.parse(buf.subarray(20, 20 + jsonLen).toString('utf8').trimEnd());
+  const binStart = 20 + jsonLen;
+  const binLen = buf.readUInt32LE(binStart);
+  let bin = buf.subarray(binStart + 8, binStart + 8 + binLen);
+  if (!json.materials?.length) return glb;
+  const offset = bin.length;
+  const pad = (4 - (GRIME_PNG.length % 4)) % 4;
+  bin = Buffer.concat([bin, GRIME_PNG, Buffer.alloc(pad)]);
+  json.buffers[0].byteLength = bin.length;
+  json.bufferViews.push({ buffer: 0, byteOffset: offset, byteLength: GRIME_PNG.length });
+  json.images = [{ bufferView: json.bufferViews.length - 1, mimeType: 'image/png', name: 'grime' }];
+  json.samplers = [{ magFilter: 9729, minFilter: 9987, wrapS: 10497, wrapT: 10497 }];
+  json.textures = [{ sampler: 0, source: 0 }];
+  for (const m of json.materials) {
+    m.pbrMetallicRoughness ??= {};
+    m.pbrMetallicRoughness.baseColorTexture = { index: 0 };
+  }
+  let jsonBuf = Buffer.from(JSON.stringify(json), 'utf8');
+  jsonBuf = Buffer.concat([jsonBuf, Buffer.alloc((4 - (jsonBuf.length % 4)) % 4, 0x20)]);
+  const header = Buffer.alloc(12);
+  header.writeUInt32LE(0x46546c67, 0);
+  header.writeUInt32LE(2, 4);
+  header.writeUInt32LE(12 + 8 + jsonBuf.length + 8 + bin.length, 8);
+  const chunkHead = (len, type) => {
+    const h = Buffer.alloc(8);
+    h.writeUInt32LE(len, 0);
+    h.writeUInt32LE(type, 4);
+    return h;
+  };
+  return Buffer.concat([header, chunkHead(jsonBuf.length, 0x4e4f534a), jsonBuf, chunkHead(bin.length, 0x004e4942), bin]);
+}
+
 const outDir = new URL('../../../assets/models/', import.meta.url);
 await mkdir(outDir, { recursive: true });
 const exporter = new GLTFExporter();
@@ -92,7 +158,7 @@ for (const entry of [...CATALOG, ...variants]) {
     if (clip) animations.push(clip);
   }
   object.traverse((o) => delete o.userData.update);
-  const glb = await exporter.parseAsync(object, { binary: true, animations });
-  await writeFile(new URL(`${entry.id}.glb`, outDir), Buffer.from(glb));
+  const glb = addGrimeTexture(await exporter.parseAsync(object, { binary: true, animations }));
+  await writeFile(new URL(`${entry.id}.glb`, outDir), glb);
   console.log(`${entry.id}.glb  ${(glb.byteLength / 1024).toFixed(1)} KB${animations.length ? `  (${animations[0].name}, ${animations[0].tracks.length} tracks)` : ''}`);
 }

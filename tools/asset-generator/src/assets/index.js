@@ -7,6 +7,7 @@ import * as insects from './insects.js';
 import * as gangs from './gangs.js';
 import * as city from './city.js';
 import * as habitats from './habitats.js';
+import { weather } from './grit.js';
 
 export * from './nature.js';
 export * from './objects.js';
@@ -14,6 +15,7 @@ export * from './insects.js';
 export * from './gangs.js';
 export * from './city.js';
 export * from './habitats.js';
+export { weather, grimeTextureData } from './grit.js';
 export { PALETTE } from './common.js';
 
 export const CATALOG = [
@@ -74,6 +76,12 @@ for (const gang of Object.values(gangs.GANGS)) {
     { id: `tag_${gang.id}`, label: `Tag · ${gang.label}`, category: 'gang', gang: gang.id, create: () => gangs.createGangTag(gang.id) },
     { id: `marker_${gang.id}`, label: `Borne · ${gang.label}`, category: 'gang', gang: gang.id, create: (o) => gangs.createTerritoryMarker(gang.id, o) },
   );
+}
+
+// Every asset goes through the grime pass (darker palette, grain, dirt, rust).
+for (const entry of CATALOG) {
+  const make = entry.create;
+  entry.create = (options = {}) => weather(make(options), { seed: options.seed ?? 1 });
 }
 
 export function createAsset(id, options) {

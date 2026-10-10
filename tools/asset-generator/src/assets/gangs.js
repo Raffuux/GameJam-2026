@@ -128,6 +128,7 @@ export function createGangFlag(gangId) {
   const base = clothG.attributes.position.array.slice();
   const banner = mesh(clothG, mat(gang.color, { side: THREE.DoubleSide, roughness: 0.9 }));
   banner.position.set(0.2, pole - H / 2 - 0.3, 0);
+  banner.userData.keepGeometry = true;
   const front = createEmblem(gang.id, gang.style === 'tattoo' && gang.ink === gang.color ? PALETTE.black : gang.ink);
   front.scale.setScalar(3.4);
   front.position.set(W / 2, 0, 0.12);

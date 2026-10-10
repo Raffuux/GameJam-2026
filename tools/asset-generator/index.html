@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Jardin des assets</title>
     <style>
-      html, body { margin: 0; height: 100%; background: #9fc7e0; overflow: hidden; font-family: system-ui, sans-serif; }
+      html, body { margin: 0; height: 100%; background: #6b7479; overflow: hidden; font-family: system-ui, sans-serif; }
       #app { position: fixed; inset: 0; }
       #panel {
         position: fixed; top: 12px; left: 12px; max-height: calc(100% - 24px); overflow-y: auto;
@@ -23,7 +23,10 @@
       #panel button.active { background: #a9c46c; color: #18200f; }
       #panel .size { float: right; opacity: 0.6; font-variant-numeric: tabular-nums; }
       @media (max-width: 520px) { #panel { width: auto; right: 12px; max-height: 38%; } }
-    </style>
+    
+      #grain { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0.09; mix-blend-mode: overlay; image-rendering: pixelated; }
+      #app::after { content: ''; position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(10, 8, 6, 0.55) 100%); }
+</style>
   </head>
   <body>
     <div id="app"></div>

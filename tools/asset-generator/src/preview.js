@@ -14,8 +14,9 @@ document.getElementById('app').appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 // Soft image-based light so metal (can, coin, paperclip) catches reflections.
 scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
-scene.environmentIntensity = 0.35;
-const sky = new THREE.Color(0x9fc7e0);
+scene.environmentIntensity = 0.2;
+// Smoggy late-afternoon light: darker, warmer, hazier.
+const sky = new THREE.Color(0x6b7479);
 scene.background = sky;
 scene.fog = new THREE.Fog(sky, 120, 320);
 
@@ -26,8 +27,8 @@ controls.maxPolarAngle = Math.PI / 2 - 0.03;
 controls.minDistance = 1.5;
 controls.maxDistance = 120;
 
-scene.add(new THREE.HemisphereLight(0xdff1ff, 0x5b4a2c, 1.1));
-const sun = new THREE.DirectionalLight(0xfff1d6, 2.6);
+scene.add(new THREE.HemisphereLight(0xb7c2c6, 0x2e261c, 0.75));
+const sun = new THREE.DirectionalLight(0xffc48a, 2.1);
 sun.position.set(70, 80, 45);
 sun.castShadow = true;
 sun.shadow.mapSize.set(4096, 4096);
@@ -43,9 +44,9 @@ const groundG = new THREE.PlaneGeometry(300, 300, 90, 90);
 groundG.rotateX(-Math.PI / 2);
 const gp = groundG.attributes.position;
 const colors = [];
-const soil = new THREE.Color(0x6e5a3a);
-const moss = new THREE.Color(0x56763a);
-const concrete = new THREE.Color(0x8f8a80);
+const soil = new THREE.Color(0x4a3c29);
+const moss = new THREE.Color(0x3b5026);
+const concrete = new THREE.Color(0x5a5650);
 for (let i = 0; i < gp.count; i++) {
   const x = gp.getX(i);
   const z = gp.getZ(i);
@@ -54,6 +55,7 @@ for (let i = 0; i < gp.count; i++) {
   const urban = THREE.MathUtils.smoothstep(x, 38, 48);
   gp.setY(i, (n * 0.25 - 0.2) * (1 - urban) - 0.02 * urban);
   const c = soil.clone().lerp(moss, THREE.MathUtils.clamp(0.5 + n * 0.35, 0, 1)).lerp(concrete, urban * 0.85);
+  c.multiplyScalar(0.82 + Math.random() * 0.18); // grain
   colors.push(c.r, c.g, c.b);
 }
 groundG.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
@@ -207,3 +209,23 @@ renderer.setAnimationLoop(() => {
   renderer.render(scene, camera);
 });
 window.__preview = { scene, camera, controls, frame };
+
+// Film grain and vignette on top of the canvas.
+const grain = document.createElement('canvas');
+grain.id = 'grain';
+document.body.appendChild(grain);
+const gctx = grain.getContext('2d');
+grain.width = 256;
+grain.height = 256;
+const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function drawGrain() {
+  const img = gctx.createImageData(256, 256);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = Math.random() * 255;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+    img.data[i + 3] = 255;
+  }
+  gctx.putImageData(img, 0, 0);
+}
+drawGrain();
+if (!still) setInterval(drawGrain, 80);

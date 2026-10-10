@@ -13,6 +13,14 @@ Assets low-poly procéduraux en Three.js, style jardin vu à hauteur d'araignée
 - **Modèles .glb** : `npm run export:glb` régénère `assets/models/<id>.glb` à la racine du repo (donc `res://assets/models/` dans Godot). Les insectes y ont leur
   animation cuite en boucle (`walk`, ou `hover` pour l'abeille). Les drapeaux sont statiques dans le .glb.
 
+## Style « grain »
+
+Tous les assets passent par `src/assets/grit.js` : palette assombrie et désaturée, texture de crasse
+(grain, taches, rayures) projetée à taille constante (1 répétition = 3 cm), saleté au pied des objets,
+coulures sur ce qui est haut et rouille sur le métal. Dans les .glb, la texture est intégrée et la
+saleté est dans les couleurs de sommets (COLOR_0) : rien à régler dans Godot. Les réglages sont en haut
+de `grit.js` (`GRIT`).
+
 ## Utilisation dans Godot 4
 
 Le code Three.js sert d'outil de génération : le jeu utilise les .glb.
