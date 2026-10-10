@@ -1,7 +1,8 @@
 // Exports every catalog asset to assets/models/<id>.glb at the repo root
-// Unity...). Animated creatures get their procedural motion baked into a
-// looping glTF animation ("walk", or "hover" for the bee), playable with an
-// AnimationPlayer. Run: npm run export:glb
+// (res://assets/models/ in Godot, also usable in Blender or Unity).
+// Animated creatures get their procedural motion baked into a looping glTF
+// animation ("walk", or "hover" for the bee) for an AnimationPlayer.
+// Run: npm run export:glb
 import { mkdir, writeFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
