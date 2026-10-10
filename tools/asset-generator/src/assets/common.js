@@ -53,7 +53,7 @@ export function mat(color, opts = {}) {
   if (!matCache.has(key)) {
     const m = new THREE.MeshStandardMaterial({
       color,
-      flatShading: true,
+      flatShading: false,
       roughness: 0.75,
       metalness: 0,
       ...opts,

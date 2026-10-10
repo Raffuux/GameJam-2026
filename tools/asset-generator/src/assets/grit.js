@@ -5,8 +5,10 @@
 //   (GRIT.tile cm per repeat) so detail looks the same on a fly and a tower,
 // - dirt: vertex colours (glTF COLOR_0) with stains, a dark band near the
 //   ground, run-off streaks and rust patches on metal parts.
-// Large faces are split a little so the dirt gradients have vertices to live on.
+// Large faces are split a little so the dirt gradients have vertices to live on,
+// and normals are smoothed (hard edges kept past GRIT.crease).
 import * as THREE from 'three';
+import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { classifySurface, surfaceTexture } from './textures.js';
 
 const GRIT = {
@@ -16,6 +18,7 @@ const GRIT = {
   groundDirt: 0.55,
   streak: 0.45,
   tile: 4, // cm covered by one repeat of a surface texture
+  crease: THREE.MathUtils.degToRad(70), // sharper angles keep a hard edge
   rust: new THREE.Color(0.55, 0.32, 0.18),
 };
 
@@ -123,6 +126,7 @@ function gritColor(material) {
   material.color.setHSL(hsl.h, hsl.s * (1 - GRIT.desaturate), hsl.l * GRIT.darken);
   material.roughness = Math.min(1, material.roughness + 0.12);
   material.vertexColors = true;
+  material.flatShading = false;
   // In the browser the texture is attached directly; the .glb exporter adds
   // it to the file itself (see scripts/export-glb.mjs).
   if (surface && typeof document !== 'undefined') material.map = surfaceTexture(surface);
@@ -158,6 +162,9 @@ export function weather(root, { seed = 1 } = {}) {
     let g = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry.clone();
     for (const name of Object.keys(g.attributes)) if (name !== 'position' && name !== 'normal') g.deleteAttribute(name);
     if (!glassy) g = tessellate(g, maxEdge);
+    // Smooth shading: normals are averaged across faces, except across sharp
+    // creases (box corners, building edges) which stay crisp.
+    g = toCreasedNormals(g, GRIT.crease);
     const pos = g.attributes.position;
     const colors = new Float32Array(pos.count * 3);
     const metal = material.metalness > 0.4;

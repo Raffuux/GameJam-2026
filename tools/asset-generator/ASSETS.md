@@ -17,7 +17,7 @@ Assets low-poly procéduraux en Three.js, style jardin vu à hauteur d'araignée
 
 Tous les assets passent par `src/assets/grit.js` : palette assombrie et désaturée, et une vraie texture
 de matière choisie selon le matériau (`src/assets/textures.js`) : béton/pierre, carton, bois, métal brossé,
-plastique rayé ou peau/chitine. Elle est projetée à taille constante (1 répétition = 4 cm), donc les
+plastique rayé ou peau/chitine. L'ombrage est lisse (normales adoucies), sauf au-delà de 70° où les arêtes restent nettes (`GRIT.crease`). Elle est projetée à taille constante (1 répétition = 4 cm), donc les
 détails ont la même taille sur une mouche et sur un immeuble. Par-dessus : taches, saleté au pied des
 objets, coulures sur ce qui est haut et rouille sur le métal, dans les couleurs de sommets (COLOR_0).
 Dans les .glb, les textures sont intégrées (une par matière) : rien à régler dans Godot. Les réglages

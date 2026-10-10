@@ -60,7 +60,7 @@ for (let i = 0; i < gp.count; i++) {
 }
 groundG.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
 groundG.computeVertexNormals();
-const ground = new THREE.Mesh(groundG, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 }));
+const ground = new THREE.Mesh(groundG, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }));
 ground.receiveShadow = true;
 scene.add(ground);
 
