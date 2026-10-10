@@ -19,6 +19,15 @@ façade vers la chaussée, puis l'arrière des îlots est rempli. Les quartiers 
 quand une rue entre dans un territoire, une borne et une bande de peinture aux couleurs du gang le signalent.
 Chaque quartier est teinté de la couleur de son gang au sol, sur le radar et sur la carte (touche **M**).
 
+Dans chaque territoire, la plupart des bâtiments sont ceux du gang (`scripts/city/gang_buildings.gd`) :
+fourmilières en terre percées d'entrées pour la Colonie, tours sombres voilées de soie et faisceaux de brindilles
+tendus de grosses toiles (avec cocons et fils d'ancrage sur lesquels on marche) pour les Tisseuses,
+canettes empilées, bouteilles et cartons pour la Nuée, boîtes de sardines et temples de feuilles pour les Prieurs.
+Si le fil des assets fournit `assets/models/gang_<gang>_<n>.glb`, ces modèles sont utilisés en priorité.
+
+![La Toile](docs/map/toile.png)
+![Les fourmilières](docs/map/chantier.png)
+
 | Quartier | Gang | Couleur | Ce qu'on y trouve |
 |---|---|---|---|
 | Le Centre-Ville | neutre | beige | la Banque Centrale (colonnes en crayons, piles de pièces), les plus hautes tours au cœur, le parc rond avec une fontaine-capsule et la bouche d'incendie géante |

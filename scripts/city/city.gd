@@ -6,6 +6,7 @@ const Layout := preload("res://scripts/city/layout.gd")
 const Builder := preload("res://scripts/city/builder.gd")
 const Props := preload("res://scripts/city/props.gd")
 const Tex := preload("res://scripts/city/textures.gd")
+const GangBuildings := preload("res://scripts/city/gang_buildings.gd")
 
 ## Hauteurs des couches de la chaussée (le sol est à 0).
 const SIDEWALK_Y := 0.4
@@ -27,10 +28,10 @@ var sidewalk_points := {}
 ## Couleurs, hauteurs, largeur sur rue, profondeur, écart entre immeubles, par quartier.
 const STYLE := {
 	"centre": {"colors": ["c9c3b5", "a7b4c2", "d8cfc0", "8fa3b8", "e2dccf", "b7a99a"], "h": [140.0, 380.0], "w": [48.0, 85.0], "d": [45.0, 80.0], "gap": [5.0, 12.0], "model": "building_tower"},
-	"tisseuses": {"colors": ["4b3f57", "3d3646", "5a4d66", "2e2a35", "54485e"], "h": [70.0, 180.0], "w": [26.0, 48.0], "d": [30.0, 55.0], "gap": [2.0, 5.0], "model": ""},
+	"tisseuses": {"colors": ["4b3f57", "3d3646", "5a4d66", "2e2a35", "54485e"], "h": [70.0, 180.0], "w": [34.0, 60.0], "d": [34.0, 60.0], "gap": [3.0, 8.0], "model": ""},
 	"prieurs": {"colors": ["8d6e57", "7a6a5a", "9a8a73", "6e5a4a"], "h": [35.0, 70.0], "w": [60.0, 100.0], "d": [50.0, 80.0], "gap": [10.0, 22.0], "model": ""},
 	"nuee": {"colors": ["7d8a8f", "6b7378", "8a8f7d", "5f676b"], "h": [40.0, 110.0], "w": [38.0, 70.0], "d": [35.0, 65.0], "gap": [8.0, 18.0], "model": "building_carton"},
-	"colonie": {"colors": ["b5835a", "c49a6c", "a8714a", "9a6a48"], "h": [30.0, 90.0], "w": [34.0, 64.0], "d": [32.0, 60.0], "gap": [6.0, 16.0], "model": "building_box"},
+	"colonie": {"colors": ["b5835a", "c49a6c", "a8714a", "9a6a48"], "h": [60.0, 130.0], "w": [55.0, 95.0], "d": [55.0, 95.0], "gap": [4.0, 12.0], "model": "building_box"},
 }
 
 
@@ -357,7 +358,11 @@ func _place_building(f: Dictionary, zone: String) -> void:
 	if zone == "centre":
 		# les tours les plus hautes près du cœur de la ville
 		h *= lerpf(1.25, 0.75, clampf(c.length() / 350.0, 0.0, 1.0))
-	if zone == "prieurs":
+	# dans les territoires, la plupart des bâtiments sont ceux du gang (fourmilières, toiles...)
+	var custom := zone != "centre" and b.rng.randf() < 0.85
+	if custom:
+		h = GangBuildings.build(b, zone, g, size, h)
+	elif zone == "prieurs":
 		_warehouse(g, size, h)
 	else:
 		h = _building(g, size, h, zone)
@@ -368,12 +373,13 @@ func _place_building(f: Dictionary, zone: String) -> void:
 	if gang == "":
 		return
 	if b.rng.randf() < 0.4:
-		_gang_flag(zone, Vector3(size.x * 0.3, h, size.y * 0.3), 24.0, g)
-	if b.rng.randf() < 0.6:
+		var top := Vector3(0, h - 1.0, 0) if custom else Vector3(size.x * 0.3, h, size.y * 0.3)
+		_gang_flag(zone, top, 24.0, g)
+	if not custom and b.rng.randf() < 0.6:
 		var tag := gang.split(" ")[1].to_upper()
 		var l := b.label(tag, Vector3(b.rand(-size.x * 0.2, size.x * 0.2), b.rand(8, 18), size.y / 2.0 + 0.3), color, 140, 0.0, g)
 		l.rotation.z = b.rand(-0.15, 0.15)
-	if zone == "tisseuses" and b.rng.randf() < 0.5:
+	if zone == "tisseuses" and not custom and b.rng.randf() < 0.5:
 		b.box(Vector3(0, b.rand(20, 40), size.y / 2.0 + 0.4), Vector3(size.x * 0.6, 1.2, 0.4), b.glow(color, 4.0), false, 0.0, g, "", false)
 	# poubelles dans les ruelles entre les immeubles
 	if b.rng.randf() < 0.35:
