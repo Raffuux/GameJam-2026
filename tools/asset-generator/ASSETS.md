@@ -46,6 +46,7 @@ maisons de la ville et les territoires des gangs. Clique un nom pour zoomer dess
 | Insectes animés | mouche, mante religieuse, fourmi, coccinelle, scarabée rhinocéros, abeille, chenille, araignée |
 | Ville | rue droite et carrefour (tuiles 20 × 20 cm, 2 voies), banque, tour boîte de céréales, immeuble carton, immeuble brique de lait, bouche d'incendie, lampadaire allumette, poubelle, benne, sac poubelle, papier froissé, mégot, bouteille plastique |
 | Props de zones | toile (Tisseuses), entrepôt boîte de sardines et flaque (docks des Prieurs), fourmilière et échafaudage en bâtons de glace (chantier de la Colonie) ; la Nuée utilise bennes, sacs et déchets |
+| Habitats des gangs | repaire aux toiles géantes des Tisseuses (`habitat_tisseuses`), nid des mantes avec oothèques des Prieurs (`habitat_prieurs`), décharge à mouches de la Nuée avec essaim animé (`habitat_nuee`), grande fourmilière en aiguilles de pin de la Colonie avec porte principale vers +Z (`habitat_colonie`) |
 | Gangs | un membre habillé, un drapeau, un tag graffiti et une borne de territoire par gang |
 
 ## Gangs et territoires

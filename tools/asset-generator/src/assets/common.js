@@ -99,7 +99,8 @@ export function jitter(geometry, amount, seed = 1) {
   const offsets = new Map();
   const r = rng(seed);
   for (let i = 0; i < pos.count; i++) {
-    const key = `${pos.getX(i).toFixed(3)},${pos.getY(i).toFixed(3)},${pos.getZ(i).toFixed(3)}`;
+    // Rounded with Math.round so -0.0004 and 0.0004 share a key (no seams).
+    const key = [pos.getX(i), pos.getY(i), pos.getZ(i)].map((v) => Math.round(v * 1000)).join(',');
     if (!offsets.has(key)) {
       offsets.set(key, [(r() - 0.5) * amount, (r() - 0.5) * amount, (r() - 0.5) * amount]);
     }

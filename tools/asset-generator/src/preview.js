@@ -17,7 +17,7 @@ scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnviron
 scene.environmentIntensity = 0.35;
 const sky = new THREE.Color(0x9fc7e0);
 scene.background = sky;
-scene.fog = new THREE.Fog(sky, 90, 240);
+scene.fog = new THREE.Fog(sky, 120, 320);
 
 const camera = new THREE.PerspectiveCamera(50, 1, 0.05, 400);
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -31,8 +31,8 @@ const sun = new THREE.DirectionalLight(0xfff1d6, 2.6);
 sun.position.set(70, 80, 45);
 sun.castShadow = true;
 sun.shadow.mapSize.set(4096, 4096);
-Object.assign(sun.shadow.camera, { left: -90, right: 90, top: 90, bottom: -90, near: 1, far: 300 });
-sun.target.position.set(40, 0, 0);
+Object.assign(sun.shadow.camera, { left: -140, right: 140, top: 140, bottom: -140, near: 1, far: 400 });
+sun.target.position.set(10, 0, -20);
 scene.add(sun.target);
 sun.shadow.bias = -0.0005;
 sun.shadow.normalBias = 0.04;
@@ -91,8 +91,9 @@ const layout = {
 
 // One small territory per gang, in a row behind the yard.
 ['tisseuses', 'prieurs', 'nuee', 'colonie'].forEach((gang, i) => {
-  const cx = -45 + i * 30;
-  const cz = -45;
+  const cx = -90 + i * 58;
+  const cz = -75;
+  layout[`habitat_${gang}`] = [[cx, cz - 26, 0]];
   const species = { tisseuses: 'spider', prieurs: 'mantis', nuee: 'fly', colonie: 'ant' }[gang];
   layout[`flag_${gang}`] = [[cx, cz, 0]];
   layout[`marker_${gang}`] = [[cx + 7, cz + 3, 0.3]];
@@ -127,7 +128,7 @@ Object.assign(layout, {
 
 const focus = {};
 const list = document.getElementById('list');
-const groups = { nature: 'Végétation', object: 'Objets du quotidien', insect: 'Insectes', city: 'Ville', zone: 'Props de zones', gang: 'Gangs et territoires' };
+const groups = { nature: 'Végétation', object: 'Objets du quotidien', insect: 'Insectes', city: 'Ville', zone: 'Props de zones', habitat: 'Habitats des gangs', gang: 'Gangs et territoires' };
 let lastCat = null;
 CATALOG.forEach((entry, idx) => {
   const spots = layout[entry.id] ?? [[idx * 4, 0, 0]];

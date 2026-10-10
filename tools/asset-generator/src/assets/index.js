@@ -6,12 +6,14 @@ import * as objects from './objects.js';
 import * as insects from './insects.js';
 import * as gangs from './gangs.js';
 import * as city from './city.js';
+import * as habitats from './habitats.js';
 
 export * from './nature.js';
 export * from './objects.js';
 export * from './insects.js';
 export * from './gangs.js';
 export * from './city.js';
+export * from './habitats.js';
 export { PALETTE } from './common.js';
 
 export const CATALOG = [
@@ -57,6 +59,10 @@ export const CATALOG = [
   { id: 'puddle', label: 'Flaque des docks (Prieurs)', category: 'zone', create: city.createPuddle },
   { id: 'anthill', label: 'Fourmilière (Colonie)', category: 'zone', create: city.createAnthill },
   { id: 'scaffolding', label: 'Échafaudage (Colonie)', category: 'zone', create: city.createScaffolding },
+  { id: 'habitat_tisseuses', label: 'Repaire aux toiles (Tisseuses)', category: 'habitat', create: habitats.createWebLair },
+  { id: 'habitat_prieurs', label: 'Nid des mantes (Prieurs)', category: 'habitat', create: habitats.createMantisNest },
+  { id: 'habitat_nuee', label: 'Décharge (Nuée)', category: 'habitat', create: habitats.createFlyDump },
+  { id: 'habitat_colonie', label: 'Fourmilière (Colonie)', category: 'habitat', create: habitats.createAntMound },
 ];
 
 // Gang members, flags, graffiti tags and territory markers for each gang.

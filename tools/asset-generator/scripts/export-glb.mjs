@@ -1,7 +1,7 @@
 // Exports every catalog asset to assets/models/<id>.glb at the repo root
 // (res://assets/models/ in Godot, also usable in Blender or Unity).
 // Animated creatures get their procedural motion baked into a looping glTF
-// animation ("walk", or "hover" for the bee) for an AnimationPlayer.
+// animation ("walk", "hover" for the bee, "swarm" for the dump) for an AnimationPlayer.
 // Run: npm run export:glb
 import { mkdir, writeFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -27,6 +27,7 @@ globalThis.FileReader ??= class {
 // 4π/3 s is a whole number of walk steps (9 rad/s) and wing beats (60 rad/s).
 const LOOP_SECONDS = (4 * Math.PI) / 3;
 const FPS = 30;
+const CLIP_NAMES = { bee: 'hover', habitat_nuee: 'swarm' };
 
 function collectUpdaters(root) {
   const updaters = [];
@@ -78,7 +79,7 @@ for (const entry of CATALOG) {
   const animations = [];
   // Flags wave by deforming their mesh, which glTF node animation cannot carry.
   if (updaters.length && !entry.id.startsWith('flag_')) {
-    const clip = bakeAnimation(object, updaters, entry.id === 'bee' ? 'hover' : 'walk');
+    const clip = bakeAnimation(object, updaters, CLIP_NAMES[entry.id] ?? 'walk');
     if (clip) animations.push(clip);
   }
   object.traverse((o) => delete o.userData.update);
