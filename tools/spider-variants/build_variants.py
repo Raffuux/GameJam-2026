@@ -4,11 +4,13 @@ Takes the rigged spider (assets/spider/jumping_spider.blend of good-spider-hood,
 untouched) and adds accessories parented to its bones, so the idle / walk / jump
 animations and the procedural IK legs keep working:
 
-  durag   satin durag with long tails on the carapace
-  bandana paisley bandana tied over the lower face (Grove Street style)
+  durag_<colour>    satin durag with long tails on the carapace
+  bandana_<colour>  paisley bandana tied over the lower face (Grove Street style)
+  cap_<colour>      baseball cap with a flat brim and a letter on the front
+                    (colours: green, purple, red, blue, black)
   joint   big fat cone joint held in the chelicerae, glowing end and smoke
   skull   realistic black-and-grey skull tattoos painted into the pixel-art atlas
-  girl    red stilettos on all eight feet, bigger eyes, long curled lashes and a bow
+  girl    red stilettos on all eight feet, bigger eyes and long curled lashes
 
 Everything follows the source style: smooth shapes, small pixel-art textures sampled
 with nearest filtering. Blender is Z-up and the spider faces +Y (Godot: -Z forward).
@@ -24,7 +26,7 @@ from mathutils.bvhtree import BVHTree
 
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[-2:]
 SRC, OUT = argv[0], argv[1]
-VARIANTS = argv[2:] or ["durag", "bandana", "joint", "skull", "girl"]
+VARIANTS = argv[2:] or [f"{kind}_{c}" for kind in ("durag", "bandana", "cap") for c in ("green", "purple", "red", "blue", "black")] + ["joint", "skull", "girl"]
 
 
 # --------------------------------------------------------------------------- helpers
@@ -77,6 +79,20 @@ def material(name, ramp, rough=0.6, metal=0.0, emit=None, alpha=1.0, seed=1, pat
 
 def hexes(*cs):
     return [tuple(int(c[i:i + 2], 16) for i in (0, 2, 4)) for c in cs]
+
+
+# Colourways for the headwear (Grove green, Ballas purple, red, blue, black).
+COLORS = {"green": "1d6a2c", "purple": "5e2580", "red": "a3141e", "blue": "1f4fae", "black": "202026"}
+
+
+def shades(hex_, ks):
+    """Ramp of a colour: one hex per brightness factor, black kept readable."""
+    base = [int(hex_[i:i + 2], 16) for i in (0, 2, 4)]
+    out = []
+    for k in ks:
+        c = [min(255, int(v * k + (14 if hex_ == COLORS["black"] else 0) * (k - 0.4))) for v in base]
+        out.append("%02x%02x%02x" % tuple(max(0, x) for x in c))
+    return hexes(*out)
 
 
 def add(kind, **kw):
@@ -158,8 +174,8 @@ def enlarge_eyes(body, eyes, k):
 
 
 # --------------------------------------------------------------------------- variants
-def durag(rig, body):
-    satin = material("durag_satin", hexes("2a0f3a", "45185e", "5e2580", "7d3aa6", "a35fcc"), rough=0.3, seed=3,
+def durag(rig, body, color="purple"):
+    satin = material(f"durag_{color}", shades(COLORS[color], (0.45, 0.72, 1.0, 1.3, 1.7)), rough=0.3, seed=3,
                      pattern=lambda u, v: 0.35 * math.sin(u * math.pi * 6) ** 8)
     # Cap: the top of an ellipsoid shrink-wrapped onto the carapace, behind the eyes.
     cap = add("uv_sphere", segments=32, ring_count=16, radius=1, location=(0, 0.19, 0.36))
@@ -284,10 +300,10 @@ def paisley(u, v):
     return 0.0
 
 
-def bandana(rig, body):
+def bandana(rig, body, color="green"):
     """Grove Street style: a paisley bandana tied over the lower face like a mask,
     covering the chelicerae, knotted at the back of the head."""
-    cloth = material("bandana_paisley", hexes("0b2f12", "1d6a2c", "24803a", "d9ead2"), rough=0.85, seed=21,
+    cloth = material(f"bandana_{color}", shades(COLORS[color], (0.4, 1.0, 1.2)) + hexes("e6e2d8"), rough=0.85, seed=21,
                      pattern=paisley, size=32)
     bvh = surface(body)
     # Triangle of cloth in front of the face: rows from just under the eyes down to a point.
@@ -465,7 +481,6 @@ def skull(rig, body):
 def girl(rig, body):
     red = material("heel_red", hexes("6e0a12", "a3101e", "d11a2a", "f04a55"), rough=0.2, seed=11)
     black = material("lash_black", hexes("050505", "121212", "222222"), rough=0.35, seed=12)
-    pink = material("bow_pink", hexes("b0386e", "d9559a", "f07ab8", "ffa8d4"), rough=0.5, seed=13)
     eyes = eye_centers(body)
     enlarge_eyes(body, eyes, 1.3)
     eyes = eye_centers(body)
@@ -520,22 +535,85 @@ def girl(rig, body):
             bpy.context.view_layer.objects.active = lash
             bpy.ops.object.convert(target="MESH")
             finish(bpy.context.active_object, black, rig, "body", f"lash_{round(c.x, 2)}_{j}")
-    # A pink bow on top of the head, a little to the side.
-    bow_c = Vector((0.14, 0.24, 0.71))
-    for k in (1, -1):
-        loop = add("uv_sphere", segments=12, ring_count=8, radius=1, location=bow_c + Vector((k * 0.07, 0, 0.01)))
-        loop.scale = (0.07, 0.035, 0.05)
-        loop.rotation_euler.y = k * 0.35
-        finish(loop, pink, rig, "body", f"bow_{'R' if k > 0 else 'L'}")
-    knot = add("uv_sphere", segments=10, ring_count=6, radius=0.03, location=bow_c)
-    finish(knot, pink, rig, "body", "bow_knot")
 
 
-BUILDERS = {"durag": durag, "bandana": bandana, "joint": joint, "skull": skull, "girl": girl}
+def cap(rig, body, color="green"):
+    """Baseball cap worn forward: a dome over the carapace, a flat brim over the eyes,
+    a top button and a white letter on the front panel."""
+    felt = material(f"cap_{color}", shades(COLORS[color], (0.5, 0.8, 1.0, 1.15)), rough=0.8, seed=31)
+    white = material("cap_logo", hexes("d8d4ca", "ece8de", "f8f6f0"), rough=0.6, seed=32)
+    cy, cz, rx, ry, rz = 0.25, 0.66, 0.31, 0.3, 0.26
+    crown = add("uv_sphere", segments=32, ring_count=16, radius=1, location=(0, cy, cz))
+    crown.scale = (rx, ry, rz)
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    bm = bmesh.new()
+    bm.from_mesh(crown.data)
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.z < cz - 0.01], context="VERTS")
+    bm.to_mesh(crown.data)
+    bm.free()
+    sol = crown.modifiers.new("thick", "SOLIDIFY")
+    sol.thickness = 0.02
+    bpy.context.view_layer.objects.active = crown
+    bpy.ops.object.modifier_apply(modifier="thick")
+    bpy.ops.object.shade_smooth()
+    finish(crown, felt, rig, "body", "cap_crown")
+    # Half-disc brim from the front of the dome, tilted down and curved at the sides.
+    bm = bmesh.new()
+    y0, depth, half = cy + ry * 0.8, 0.32, 0.28
+    pts = [(half * math.cos(t), depth * math.sin(t)) for t in (math.pi * k / 16 for k in range(17))]
+    verts = []
+    for x, d in pts:
+        verts.append(bm.verts.new((x, y0 + d, cz + 0.01 - 0.12 * max(0, d - 0.1) - 0.05 * (x / half) ** 2)))
+    bm.faces.new(verts)
+    bmesh.ops.triangulate(bm, faces=bm.faces[:])
+    uv = bm.loops.layers.uv.new("UVMap")
+    for f in bm.faces:
+        for loop in f.loops:
+            loop[uv].uv = (loop.vert.co.x * 2 + 0.5, loop.vert.co.y * 2)
+    mesh = bpy.data.meshes.new("cap_brim")
+    bm.to_mesh(mesh)
+    bm.free()
+    brim = bpy.data.objects.new("cap_brim", mesh)
+    bpy.context.collection.objects.link(brim)
+    bpy.ops.object.select_all(action="DESELECT")
+    brim.select_set(True)
+    bpy.context.view_layer.objects.active = brim
+    sol = brim.modifiers.new("thick", "SOLIDIFY")
+    sol.thickness = 0.025
+    bpy.ops.object.modifier_apply(modifier="thick")
+    finish(brim, felt, rig, "body", "cap_brim")
+    button = add("uv_sphere", segments=10, ring_count=6, radius=0.035, location=(0, cy, cz + rz + 0.01))
+    button.scale.z = 0.6
+    finish(button, felt, rig, "body", "cap_button")
+    # A white letter on the front panel, facing along the dome normal.
+    t = math.radians(52)
+    dy, dz = ry * math.sin(t), rz * math.cos(t)
+    tilt = math.atan2(dy / ry ** 2, dz / rz ** 2)
+    font = bpy.data.curves.new("cap_logo", "FONT")
+    font.body = "S"
+    font.size = 0.15
+    font.extrude = 0.008
+    font.align_x = "CENTER"
+    font.align_y = "CENTER"
+    logo = bpy.data.objects.new("cap_logo", font)
+    bpy.context.collection.objects.link(logo)
+    logo.location = (0, cy + dy + 0.022 * math.sin(tilt), cz + dz + 0.022 * math.cos(tilt))
+    logo.rotation_mode = "ZYX"  # spin the letter about its normal first, then tilt
+    logo.rotation_euler = (-tilt, 0, math.pi)
+    bpy.ops.object.select_all(action="DESELECT")
+    logo.select_set(True)
+    bpy.context.view_layer.objects.active = logo
+    bpy.ops.object.convert(target="MESH")
+    logo = bpy.context.active_object
+    finish(logo, white, rig, "body", "cap_logo")
+
+
+BUILDERS = {"durag": durag, "bandana": bandana, "cap": cap, "joint": joint, "skull": skull, "girl": girl}
 
 for name in VARIANTS:
     rig, body = load()
-    BUILDERS[name](rig, body)
+    kind, _, color = name.partition("_")
+    BUILDERS[kind](rig, body, color) if color else BUILDERS[kind](rig, body)
     rig.data.pose_position = "POSE"
     bpy.context.view_layer.update()
     os.makedirs(OUT, exist_ok=True)
