@@ -1,3 +1,4 @@
+@tool
 extends RefCounted
 ## Le mobilier urbain et les déchets, à l'échelle d'un insecte (1 unité = 1 cm).
 ## Chaque fonction pose les meshes ET les collisions. Si le modèle .glb correspondant

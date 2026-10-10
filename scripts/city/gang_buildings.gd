@@ -1,3 +1,4 @@
+@tool
 extends RefCounted
 ## Les constructions de chaque gang, à la place des immeubles humains :
 ## fourmilières pour la Colonie, tours tendues de grosses toiles pour les Tisseuses,

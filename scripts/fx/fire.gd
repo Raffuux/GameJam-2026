@@ -1,3 +1,4 @@
+@tool
 extends Node3D
 ## Un feu de déchets : flammes et fumée en particules, lumière orange qui vacille.
 ## `size` = largeur approximative du foyer (en cm, comme le reste de la ville).

@@ -1,3 +1,4 @@
+@tool
 extends RefCounted
 ## Petites briques pour construire la ville en code : boîtes, cylindres, textes,
 ## avec leurs collisions. Garde aussi la trace de ce qu'il faut dessiner sur la minimap.

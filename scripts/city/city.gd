@@ -1,3 +1,4 @@
+@tool
 extends RefCounted
 ## Construit toute la ville : sol, rues courbes avec trottoirs, immeubles alignés le long des rues,
 ## lieux spéciaux, décor de fond façon GTA. Tout est déterministe (graine fixe).

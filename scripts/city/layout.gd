@@ -1,3 +1,4 @@
+@tool
 extends RefCounted
 ## Plan de la ville d'insectes. 1 unité = 1 cm, l'araignée fait environ 1,5 cm.
 ## Vue de dessus : +x vers l'est, -z vers le nord. La ville fait 12 m x 12 m, coincée

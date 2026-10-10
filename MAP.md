@@ -1,7 +1,15 @@
 # La map : Spider Hood
 
 Une ville d'insectes façon GTA, nichée au fond d'une ruelle entre des immeubles humains.
-Projet **Godot 4.4** (renderer Compatibility, exportable en web). Ouvrir `project.godot` puis F5.
+Projet **Godot 4.4 ou plus récent** (testé en 4.4.1 et 4.7, renderer Compatibility, exportable en web).
+Ouvrir `project.godot` puis **F5** pour jouer.
+
+La ville est générée en code au lancement : dans l'éditeur, `scenes/main.tscn` paraît vide, c'est normal.
+Pour la voir sans lancer le jeu, ouvrir **`scenes/city_preview.tscn`**, puis cocher **Aperçu** en haut à gauche
+de la vue 3D pour regarder par la caméra « VueDuCiel » qui cadre toute la ville. L'échelle est 1 unité = 1 cm,
+donc la ville fait 1200 unités de large : la caméra de l'éditeur part trop près, molette pour reculer.
+Les modèles 3D (gangs, repaires, déchets) viennent de la branche `claude/assets-decor` ; sans eux la ville
+s'affiche avec des formes simples à la place.
 
 Échelle : **1 unité = 1 cm**, l'araignée fait environ 1,5 cm. La ville fait 12 m x 12 m.
 

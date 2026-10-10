@@ -1,3 +1,4 @@
+@tool
 extends RefCounted
 ## Textures générées au lancement (pas de fichiers image à gérer pour la jam).
 
