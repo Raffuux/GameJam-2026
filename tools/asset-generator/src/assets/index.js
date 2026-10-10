@@ -7,6 +7,7 @@ import * as insects from './insects.js';
 import * as gangs from './gangs.js';
 import * as city from './city.js';
 import * as habitats from './habitats.js';
+import * as hazards from './hazards.js';
 import { weather } from './grit.js';
 
 export * from './nature.js';
@@ -15,7 +16,9 @@ export * from './insects.js';
 export * from './gangs.js';
 export * from './city.js';
 export * from './habitats.js';
-export { weather, grimeTextureData } from './grit.js';
+export * from './hazards.js';
+export { weather } from './grit.js';
+export { SURFACES, surfaceTextureData } from './textures.js';
 export { PALETTE } from './common.js';
 
 export const CATALOG = [
@@ -65,6 +68,12 @@ export const CATALOG = [
   { id: 'habitat_prieurs', label: 'Nid des mantes (Prieurs)', category: 'habitat', create: habitats.createMantisNest },
   { id: 'habitat_nuee', label: 'Décharge (Nuée)', category: 'habitat', create: habitats.createFlyDump },
   { id: 'habitat_colonie', label: 'Fourmilière (Colonie)', category: 'habitat', create: habitats.createAntMound },
+  { id: 'fire_can', label: 'Bidon en feu', category: 'hazard', create: hazards.createFireCan },
+  { id: 'trash_fire', label: 'Feu de poubelle', category: 'hazard', create: hazards.createTrashFire },
+  { id: 'litter_pile', label: 'Tas de déchets', category: 'hazard', create: hazards.createLitterPile },
+  { id: 'spilled_bin', label: 'Poubelle renversée', category: 'hazard', create: hazards.createSpilledBin },
+  { id: 'oil_stain', label: "Tache d'huile", category: 'hazard', create: hazards.createOilStain },
+  { id: 'burnt_trash', label: 'Déchets brûlés', category: 'hazard', create: hazards.createBurntTrash },
 ];
 
 // Gang members, flags, graffiti tags and territory markers for each gang.
@@ -78,7 +87,7 @@ for (const gang of Object.values(gangs.GANGS)) {
   );
 }
 
-// Every asset goes through the grime pass (darker palette, grain, dirt, rust).
+// Every asset goes through the grime pass (darker palette, textures, dirt, rust).
 for (const entry of CATALOG) {
   const make = entry.create;
   entry.create = (options = {}) => weather(make(options), { seed: options.seed ?? 1 });

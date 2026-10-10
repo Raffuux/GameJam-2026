@@ -1,13 +1,13 @@
 // Exports every catalog asset to assets/models/<id>.glb at the repo root
 // (res://assets/models/ in Godot, also usable in Blender or Unity).
 // Animated creatures get their procedural motion baked into a looping glTF
-// animation ("walk", "hover" for the bee, "swarm" for the dump) for an AnimationPlayer.
+// animation ("walk", "hover" for the bee, "swarm" for the dump, "burn" for fires) for an AnimationPlayer.
 // Run: npm run export:glb
 import { mkdir, writeFile } from 'node:fs/promises';
 import { deflateSync, crc32 } from 'node:zlib';
 import * as THREE from 'three';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
-import { CATALOG, grimeTextureData } from '../src/assets/index.js';
+import { CATALOG, SURFACES, surfaceTextureData } from '../src/assets/index.js';
 
 // GLTFExporter reads blobs through FileReader, which Node does not ship.
 globalThis.FileReader ??= class {
@@ -28,7 +28,7 @@ globalThis.FileReader ??= class {
 // 4π/3 s is a whole number of walk steps (9 rad/s) and wing beats (60 rad/s).
 const LOOP_SECONDS = (4 * Math.PI) / 3;
 const FPS = 30;
-const CLIP_NAMES = { bee: 'hover', habitat_nuee: 'swarm', gang_nuee_1: 'swarm', gang_nuee_2: 'swarm', gang_nuee_3: 'swarm' };
+const CLIP_NAMES = { bee: 'hover', habitat_nuee: 'swarm', gang_nuee_1: 'swarm', gang_nuee_2: 'swarm', gang_nuee_3: 'swarm', fire_can: 'burn', trash_fire: 'burn' };
 
 function collectUpdaters(root) {
   const updaters = [];
@@ -65,7 +65,7 @@ function bakeAnimation(root, updaters, name) {
   return tracks.length ? new THREE.AnimationClip(name, LOOP_SECONDS, tracks) : null;
 }
 
-// Minimal PNG encoder for the RGBA grime texture.
+// Minimal PNG encoder for the RGBA surface textures.
 function encodePNG({ data, size }) {
   const chunk = (type, body) => {
     const len = Buffer.alloc(4);
@@ -91,29 +91,39 @@ function encodePNG({ data, size }) {
     chunk('IEND', Buffer.alloc(0)),
   ]);
 }
-const GRIME_PNG = encodePNG(grimeTextureData());
+const PNGS = Object.fromEntries(SURFACES.map((name) => [name, encodePNG(surfaceTextureData(name))]));
 
-// GLTFExporter cannot encode images in Node, so the grime texture is spliced
-// into the .glb afterwards and set as every material's base colour texture.
-function addGrimeTexture(glb) {
+// GLTFExporter cannot encode images in Node, so the surface textures are
+// spliced into the .glb afterwards. Each material's name starts with its
+// surface (see grit.js), which picks the texture.
+function addSurfaceTextures(glb) {
   const buf = Buffer.from(glb);
   const jsonLen = buf.readUInt32LE(12);
   const json = JSON.parse(buf.subarray(20, 20 + jsonLen).toString('utf8').trimEnd());
   const binStart = 20 + jsonLen;
   const binLen = buf.readUInt32LE(binStart);
   let bin = buf.subarray(binStart + 8, binStart + 8 + binLen);
-  if (!json.materials?.length) return glb;
-  const offset = bin.length;
-  const pad = (4 - (GRIME_PNG.length % 4)) % 4;
-  bin = Buffer.concat([bin, GRIME_PNG, Buffer.alloc(pad)]);
-  json.buffers[0].byteLength = bin.length;
-  json.bufferViews.push({ buffer: 0, byteOffset: offset, byteLength: GRIME_PNG.length });
-  json.images = [{ bufferView: json.bufferViews.length - 1, mimeType: 'image/png', name: 'grime' }];
+  const used = [...new Set((json.materials ?? []).map((m) => m.name?.split('_')[0]).filter((n) => PNGS[n]))];
+  if (!used.length) return buf;
+  json.images = [];
+  json.textures = [];
   json.samplers = [{ magFilter: 9729, minFilter: 9987, wrapS: 10497, wrapT: 10497 }];
-  json.textures = [{ sampler: 0, source: 0 }];
+  const textureOf = {};
+  for (const name of used) {
+    const png = PNGS[name];
+    const offset = bin.length;
+    bin = Buffer.concat([bin, png, Buffer.alloc((4 - (png.length % 4)) % 4)]);
+    json.bufferViews.push({ buffer: 0, byteOffset: offset, byteLength: png.length });
+    json.images.push({ bufferView: json.bufferViews.length - 1, mimeType: 'image/png', name });
+    json.textures.push({ sampler: 0, source: json.images.length - 1 });
+    textureOf[name] = json.textures.length - 1;
+  }
+  json.buffers[0].byteLength = bin.length;
   for (const m of json.materials) {
+    const t = textureOf[m.name?.split('_')[0]];
+    if (t === undefined) continue;
     m.pbrMetallicRoughness ??= {};
-    m.pbrMetallicRoughness.baseColorTexture = { index: 0 };
+    m.pbrMetallicRoughness.baseColorTexture = { index: t };
   }
   let jsonBuf = Buffer.from(JSON.stringify(json), 'utf8');
   jsonBuf = Buffer.concat([jsonBuf, Buffer.alloc((4 - (jsonBuf.length % 4)) % 4, 0x20)]);
@@ -158,7 +168,7 @@ for (const entry of [...CATALOG, ...variants]) {
     if (clip) animations.push(clip);
   }
   object.traverse((o) => delete o.userData.update);
-  const glb = addGrimeTexture(await exporter.parseAsync(object, { binary: true, animations }));
+  const glb = addSurfaceTextures(await exporter.parseAsync(object, { binary: true, animations }));
   await writeFile(new URL(`${entry.id}.glb`, outDir), glb);
   console.log(`${entry.id}.glb  ${(glb.byteLength / 1024).toFixed(1)} KB${animations.length ? `  (${animations[0].name}, ${animations[0].tracks.length} tracks)` : ''}`);
 }

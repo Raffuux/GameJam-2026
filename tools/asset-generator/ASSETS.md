@@ -11,15 +11,17 @@ Assets low-poly procéduraux en Three.js, style jardin vu à hauteur d'araignée
 - **Animation** : les insectes exposent `object.userData.update(tempsSecondes, vitesse)`
   (vitesse 0 = à l'arrêt, 1 = marche). `updateAssets(scene, t)` les anime tous.
 - **Modèles .glb** : `npm run export:glb` régénère `assets/models/<id>.glb` à la racine du repo (donc `res://assets/models/` dans Godot). Les insectes y ont leur
-  animation cuite en boucle (`walk`, ou `hover` pour l'abeille). Les drapeaux sont statiques dans le .glb.
+  animation cuite en boucle (`walk`, `hover` pour l'abeille, `swarm` pour les essaims, `burn` pour les feux). Les drapeaux sont statiques dans le .glb.
 
-## Style « grain »
+## Style sale et texturé
 
-Tous les assets passent par `src/assets/grit.js` : palette assombrie et désaturée, texture de crasse
-(grain, taches, rayures) projetée à taille constante (1 répétition = 3 cm), saleté au pied des objets,
-coulures sur ce qui est haut et rouille sur le métal. Dans les .glb, la texture est intégrée et la
-saleté est dans les couleurs de sommets (COLOR_0) : rien à régler dans Godot. Les réglages sont en haut
-de `grit.js` (`GRIT`).
+Tous les assets passent par `src/assets/grit.js` : palette assombrie et désaturée, et une vraie texture
+de matière choisie selon le matériau (`src/assets/textures.js`) : béton/pierre, carton, bois, métal brossé,
+plastique rayé ou peau/chitine. Elle est projetée à taille constante (1 répétition = 4 cm), donc les
+détails ont la même taille sur une mouche et sur un immeuble. Par-dessus : taches, saleté au pied des
+objets, coulures sur ce qui est haut et rouille sur le métal, dans les couleurs de sommets (COLOR_0).
+Dans les .glb, les textures sont intégrées (une par matière) : rien à régler dans Godot. Les réglages
+sont en haut de `grit.js` (`GRIT`).
 
 ## Utilisation dans Godot 4
 
@@ -55,6 +57,7 @@ maisons de la ville et les territoires des gangs. Clique un nom pour zoomer dess
 | Ville | rue droite et carrefour (tuiles 20 × 20 cm, 2 voies), banque, tour boîte de céréales, immeuble carton, immeuble brique de lait, bouche d'incendie, lampadaire allumette, poubelle, benne, sac poubelle, papier froissé, mégot, bouteille plastique |
 | Props de zones | toile (Tisseuses), entrepôt boîte de sardines et flaque (docks des Prieurs), fourmilière et échafaudage en bâtons de glace (chantier de la Colonie) ; la Nuée utilise bennes, sacs et déchets |
 | Habitats des gangs | repaire aux toiles géantes des Tisseuses (`habitat_tisseuses`), nid des mantes avec oothèques des Prieurs (`habitat_prieurs`), décharge à mouches de la Nuée avec essaim animé (`habitat_nuee`), grande fourmilière en aiguilles de pin de la Colonie avec porte principale vers +Z (`habitat_colonie`) |
+| Zones sales et feux | bidon en feu (`fire_can`) et feu de poubelle (`trash_fire`) avec flammes animées (clip `burn`), fumée, braises et une lumière ponctuelle orange (`fire_light`, KHR_lights_punctual → OmniLight3D dans Godot) ; tas de déchets (`litter_pile`), poubelle renversée (`spilled_bin`), tache d'huile (`oil_stain`), déchets brûlés (`burnt_trash`) |
 | Gangs | un membre habillé, un drapeau, un tag graffiti et une borne de territoire par gang |
 
 ## Gangs et territoires
@@ -86,4 +89,4 @@ const borne = createTerritoryMarker('tisseuses');
 - Gros repères humains en fond (vrais immeubles, voitures géantes, chaussure, arrosoir) et feux de circulation.
 - Décor de sol en masse : tapis d'herbe instancié, terre, flaques, gouttes de rosée.
 - Autres créatures : escargot, limace, ver de terre, sauterelle, papillon, guêpe, moustique.
-- Sons, particules (pollen, poussière) et textures si on veut sortir du flat shading.
+- Sons et particules (pollen, poussière) ; dans Godot, de vraies particules de fumée rendraient mieux que les boules de fumée cuites dans les feux.

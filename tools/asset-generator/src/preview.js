@@ -55,7 +55,7 @@ for (let i = 0; i < gp.count; i++) {
   const urban = THREE.MathUtils.smoothstep(x, 38, 48);
   gp.setY(i, (n * 0.25 - 0.2) * (1 - urban) - 0.02 * urban);
   const c = soil.clone().lerp(moss, THREE.MathUtils.clamp(0.5 + n * 0.35, 0, 1)).lerp(concrete, urban * 0.85);
-  c.multiplyScalar(0.82 + Math.random() * 0.18); // grain
+  c.multiplyScalar(0.9 + Math.random() * 0.1);
   colors.push(c.r, c.g, c.b);
 }
 groundG.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
@@ -126,11 +126,18 @@ Object.assign(layout, {
   puddle: [[CX - 12, 50, 0]],
   anthill: [[CX + 40, 50, 0]],
   scaffolding: [[CX + 45, -24, 0]],
+  // A dirty back alley behind the dumpster.
+  fire_can: [[CX + 40, 28, 0], [CX - 30, 30, 0]],
+  trash_fire: [[CX + 46, 36, 0.5]],
+  litter_pile: [[CX + 36, 36, 0], [CX + 22, 32, 2], [CX - 36, 36, 1]],
+  spilled_bin: [[CX + 50, 24, -0.6]],
+  oil_stain: [[CX + 28, 8, 0], [CX - 8, -5, 1.2], [CX + 42, 44, 2]],
+  burnt_trash: [[CX + 52, 40, 0.8], [CX - 26, 36, 0]],
 });
 
 const focus = {};
 const list = document.getElementById('list');
-const groups = { nature: 'Végétation', object: 'Objets du quotidien', insect: 'Insectes', city: 'Ville', zone: 'Props de zones', habitat: 'Habitats des gangs', gang: 'Gangs et territoires' };
+const groups = { nature: 'Végétation', object: 'Objets du quotidien', insect: 'Insectes', city: 'Ville', zone: 'Props de zones', habitat: 'Habitats des gangs', hazard: 'Zones sales et feux', gang: 'Gangs et territoires' };
 let lastCat = null;
 CATALOG.forEach((entry, idx) => {
   const spots = layout[entry.id] ?? [[idx * 4, 0, 0]];
@@ -209,23 +216,3 @@ renderer.setAnimationLoop(() => {
   renderer.render(scene, camera);
 });
 window.__preview = { scene, camera, controls, frame };
-
-// Film grain and vignette on top of the canvas.
-const grain = document.createElement('canvas');
-grain.id = 'grain';
-document.body.appendChild(grain);
-const gctx = grain.getContext('2d');
-grain.width = 256;
-grain.height = 256;
-const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-function drawGrain() {
-  const img = gctx.createImageData(256, 256);
-  for (let i = 0; i < img.data.length; i += 4) {
-    const v = Math.random() * 255;
-    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
-    img.data[i + 3] = 255;
-  }
-  gctx.putImageData(img, 0, 0);
-}
-drawGrain();
-if (!still) setInterval(drawGrain, 80);

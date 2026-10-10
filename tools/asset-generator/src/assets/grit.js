@@ -1,21 +1,21 @@
-// Grime pass: makes the clean low-poly assets darker, grainier and dirtier.
+// Grime pass: makes the clean low-poly assets darker, dirtier and textured.
 // - palette: every material is darkened and desaturated a little,
-// - grain: a shared tileable grime texture, box-projected at a fixed size
-//   (GRIT.tile cm per repeat) so the grain looks the same on a fly and a tower,
-// - dirt: vertex colours (glTF COLOR_0) with blotches, a dark band near the
+// - texture: each material gets a surface texture (stone, cardboard, wood,
+//   metal, plastic or organic, see textures.js), box-projected at a fixed size
+//   (GRIT.tile cm per repeat) so detail looks the same on a fly and a tower,
+// - dirt: vertex colours (glTF COLOR_0) with stains, a dark band near the
 //   ground, run-off streaks and rust patches on metal parts.
 // Large faces are split a little so the dirt gradients have vertices to live on.
 import * as THREE from 'three';
+import { classifySurface, surfaceTexture } from './textures.js';
 
 const GRIT = {
   darken: 0.78,
   desaturate: 0.22,
-  grain: 0.1,
-  blotch: 0.5,
+  blotch: 0.35,
   groundDirt: 0.55,
   streak: 0.45,
-  tile: 3, // cm covered by one repeat of the grime texture
-  textureSize: 256,
+  tile: 4, // cm covered by one repeat of a surface texture
   rust: new THREE.Color(0.55, 0.32, 0.18),
 };
 
@@ -82,80 +82,6 @@ function tessellate(geometry, maxEdge) {
   return g;
 }
 
-// Tileable grayscale grime: fine grain, specks, scratches and soft stains.
-// Returns RGBA bytes, values between ~0.55 and 1 so it only darkens.
-let grimeData = null;
-export function grimeTextureData(size = GRIT.textureSize) {
-  if (grimeData) return grimeData;
-  const data = new Uint8Array(size * size * 4);
-  const period = 8;
-  const tileNoise = (x, y, p) => {
-    // Value noise that wraps every `p` cells, so the texture tiles.
-    const xi = Math.floor(x);
-    const yi = Math.floor(y);
-    const sx = x - xi;
-    const sy = y - yi;
-    const f = (t) => t * t * (3 - 2 * t);
-    const c = (dx, dy) => hash3(((xi + dx) % p + p) % p, ((yi + dy) % p + p) % p, p);
-    const top = c(0, 0) + (c(1, 0) - c(0, 0)) * f(sx);
-    const bottom = c(0, 1) + (c(1, 1) - c(0, 1)) * f(sx);
-    return top + (bottom - top) * f(sy);
-  };
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const u = (x / size) * period;
-      const v = (y / size) * period;
-      let stain = 0;
-      let amp = 0.5;
-      let freq = 1;
-      for (let o = 0; o < 4; o++) {
-        stain += amp * tileNoise(u * freq, v * freq, period * freq);
-        amp *= 0.5;
-        freq *= 2;
-      }
-      let k = 1 - 0.28 * Math.max(0, stain - 0.35) / 0.65;
-      k -= 0.16 * hash3(x, y, 7); // grain
-      if (hash3(x, y, 11) > 0.992) k -= 0.25; // dark specks
-      data[(y * size + x) * 4] = 0;
-      data[(y * size + x) * 4 + 3] = 255;
-      const value = Math.round(THREE.MathUtils.clamp(k, 0.5, 1) * 255);
-      data[(y * size + x) * 4] = data[(y * size + x) * 4 + 1] = data[(y * size + x) * 4 + 2] = value;
-    }
-  }
-  // Scratches: short bright-dark lines that wrap around the edges.
-  for (let i = 0; i < 70; i++) {
-    let x = hash3(i, 1, 3) * size;
-    let y = hash3(i, 2, 3) * size;
-    const a = hash3(i, 3, 3) * Math.PI * 2;
-    const len = 6 + hash3(i, 4, 3) * 26;
-    for (let t = 0; t < len; t++) {
-      const px = ((Math.round(x) % size) + size) % size;
-      const py = ((Math.round(y) % size) + size) % size;
-      const idx = (py * size + px) * 4;
-      const v = Math.max(110, data[idx] - 55);
-      data[idx] = data[idx + 1] = data[idx + 2] = v;
-      x += Math.cos(a);
-      y += Math.sin(a);
-    }
-  }
-  grimeData = { data, size };
-  return grimeData;
-}
-
-let grimeTex = null;
-function grimeTexture() {
-  if (grimeTex) return grimeTex;
-  const { data, size } = grimeTextureData();
-  grimeTex = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
-  grimeTex.wrapS = grimeTex.wrapT = THREE.RepeatWrapping;
-  grimeTex.colorSpace = THREE.SRGBColorSpace;
-  grimeTex.magFilter = THREE.LinearFilter;
-  grimeTex.minFilter = THREE.LinearMipmapLinearFilter;
-  grimeTex.generateMipmaps = true;
-  grimeTex.needsUpdate = true;
-  return grimeTex;
-}
-
 // Box-projected UVs in the asset's own space: each triangle picks the axis its
 // face normal points along. Needs a non-indexed geometry.
 function boxUVs(geometry, matrix) {
@@ -188,15 +114,18 @@ function boxUVs(geometry, matrix) {
 function gritColor(material) {
   if (material.userData.gritted) return;
   material.userData.gritted = true;
+  const surface = classifySurface(material);
+  material.userData.surface = surface;
+  // The exporter finds each material's texture from this name.
+  material.name = surface ? `${surface}_${material.color.getHexString()}` : `plain_${material.color.getHexString()}`;
   const hsl = {};
   material.color.getHSL(hsl);
   material.color.setHSL(hsl.h, hsl.s * (1 - GRIT.desaturate), hsl.l * GRIT.darken);
   material.roughness = Math.min(1, material.roughness + 0.12);
   material.vertexColors = true;
-  material.userData.grime = true;
   // In the browser the texture is attached directly; the .glb exporter adds
   // it to the file itself (see scripts/export-glb.mjs).
-  if (typeof document !== 'undefined') material.map = grimeTexture();
+  if (surface && typeof document !== 'undefined') material.map = surfaceTexture(surface);
   material.needsUpdate = true;
 }
 
@@ -236,8 +165,6 @@ export function weather(root, { seed = 1 } = {}) {
       world.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld);
       const y = world.y - box.min.y;
       let k = 1;
-      // Fine grain.
-      k -= GRIT.grain * hash3(Math.floor((world.x + off) * grainScale * 3), Math.floor(world.y * grainScale * 3), Math.floor(world.z * grainScale * 3));
       // Dirt blotches.
       const blotch = noise3((world.x + off) * grainScale * 0.35, world.y * grainScale * 0.35, world.z * grainScale * 0.35);
       k -= GRIT.blotch * Math.max(0, blotch - 0.3) / 0.7;
