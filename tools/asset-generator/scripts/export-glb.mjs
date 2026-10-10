@@ -27,7 +27,7 @@ globalThis.FileReader ??= class {
 // 4π/3 s is a whole number of walk steps (9 rad/s) and wing beats (60 rad/s).
 const LOOP_SECONDS = (4 * Math.PI) / 3;
 const FPS = 30;
-const CLIP_NAMES = { bee: 'hover', habitat_nuee: 'swarm' };
+const CLIP_NAMES = { bee: 'hover', habitat_nuee: 'swarm', gang_nuee_1: 'swarm', gang_nuee_2: 'swarm', gang_nuee_3: 'swarm' };
 
 function collectUpdaters(root) {
   const updaters = [];
@@ -68,7 +68,16 @@ const outDir = new URL('../../../assets/models/', import.meta.url);
 await mkdir(outDir, { recursive: true });
 const exporter = new GLTFExporter();
 
-for (const entry of CATALOG) {
+// The map loads gang buildings as gang_<gang>_<n>.glb: seeded variants of each habitat.
+const variants = [];
+for (const gang of ['tisseuses', 'prieurs', 'nuee', 'colonie']) {
+  const habitat = CATALOG.find((e) => e.id === `habitat_${gang}`);
+  for (let n = 1; n <= 3; n++) {
+    variants.push({ ...habitat, id: `gang_${gang}_${n}`, create: () => habitat.create({ seed: 100 * n + gang.length }) });
+  }
+}
+
+for (const entry of [...CATALOG, ...variants]) {
   const object = entry.create();
   // Unique, readable node names so animation tracks (and Godot) can find them.
   let n = 0;
