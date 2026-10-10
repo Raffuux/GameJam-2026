@@ -7,7 +7,7 @@ Projet **Godot 4.4** (renderer Compatibility, exportable en web). Ouvrir `projec
 
 ![Carte des territoires](docs/map/carte.png)
 
-![Le centre-ville](docs/map/centre.png)
+![Vue d'ensemble](docs/map/vue-ensemble.png)
 
 ## Les quartiers et les gangs
 
@@ -60,6 +60,8 @@ godot --path . -- --shots=/tmp/shots
 ```
 
 Lance une série de vues de chaque quartier, la carte, et des tests d'escalade, de trottoir et de fil, puis quitte.
+
+Avec `-- --shots=/tmp/shots --overview`, il fait plutôt des vues aériennes de toute la ville.
 
 ## Pistes pour la suite
 

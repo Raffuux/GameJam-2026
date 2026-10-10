@@ -423,19 +423,22 @@ func _backdrop() -> void:
 	var human_win := Tex.world_mat(Tex.windows(0.25, 5), Color("8f877a"), 1.0 / 220.0)
 	var H := Layout.HALF
 	# murs de briques de la ruelle (nord, ouest, est) et trottoir humain au sud
-	b.box(Vector3(0, 0, -H - 30), Vector3(2 * H + 120, 900, 60), brick, true)
-	b.box(Vector3(-H - 30, 0, 0), Vector3(60, 900, 2 * H + 120), brick, true)
-	b.box(Vector3(H + 30, 0, 0), Vector3(60, 900, 2 * H + 120), brick, true)
+	for w in [
+		b.box(Vector3(0, 0, -H - 30), Vector3(2 * H + 120, 900, 60), brick, true),
+		b.box(Vector3(-H - 30, 0, 0), Vector3(60, 900, 2 * H + 120), brick, true),
+		b.box(Vector3(H + 30, 0, 0), Vector3(60, 900, 2 * H + 120), brick, true),
+	]:
+		w.add_to_group("alley_walls")
 	# au sud, la façade d'une boutique humaine avec sa vitrine
-	b.box(Vector3(0, 0, H + 30), Vector3(2 * H + 120, 900, 60), Tex.world_mat(Tex.bricks(), Color("c8b8a8"), 1.0 / 40.0), true)
-	b.box(Vector3(-200, 60, H + 0.5), Vector3(500, 300, 2), b.mat(Color("2f4a63"), 0.15, {"metallic": 0.5}), false)
-	b.box(Vector3(-200, 360, H - 40), Vector3(540, 8, 80), b.mat(Color("2a6f4a")), true)
-	b.label("ÉPICERIE", Vector3(-200, 400, H - 0.5), Color("f2f2f2"), 900, PI)
+	b.box(Vector3(0, 0, H + 30), Vector3(2 * H + 120, 900, 60), Tex.world_mat(Tex.bricks(), Color("c8b8a8"), 1.0 / 40.0), true).add_to_group("alley_walls")
+	b.box(Vector3(-200, 60, H + 0.5), Vector3(500, 300, 2), b.mat(Color("2f4a63"), 0.15, {"metallic": 0.5}), false).add_to_group("alley_walls")
+	b.box(Vector3(-200, 360, H - 40), Vector3(540, 8, 80), b.mat(Color("2a6f4a")), true).add_to_group("alley_walls")
+	b.label("ÉPICERIE", Vector3(-200, 400, H - 0.5), Color("f2f2f2"), 900, PI).add_to_group("alley_walls")
 	# fenêtres et escalier de secours sur les murs
 	for x in [-350.0, 0.0, 350.0]:
-		b.box(Vector3(x, 450, -H + 0.5), Vector3(180, 220, 2), b.mat(Color("2f4a63"), 0.2, {"metallic": 0.4}), false)
+		b.box(Vector3(x, 450, -H + 0.5), Vector3(180, 220, 2), b.mat(Color("2f4a63"), 0.2, {"metallic": 0.4}), false).add_to_group("alley_walls")
 		for k in 3:
-			b.box(Vector3(x + 150, 200 + k * 220, -H + 25), Vector3(140, 3, 50), Color("2b2b2b"), true)
+			b.box(Vector3(x + 150, 200 + k * 220, -H + 25), Vector3(140, 3, 50), Color("2b2b2b"), true).add_to_group("alley_walls")
 	# skyline
 	for k in 60:
 		var a := k / 60.0 * TAU + b.rand(-0.04, 0.04)

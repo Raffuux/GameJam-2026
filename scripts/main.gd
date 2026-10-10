@@ -247,6 +247,10 @@ func _run_test_mode(args: PackedStringArray) -> void:
 			out = a.substr(8)
 	await get_tree().process_frame
 	hud.hide_intro()
+	if "--overview" in args:
+		await _overview_shots(out)
+		get_tree().quit()
+		return
 	# [nom, x, z, y (ou -1 = surface), yaw caméra, pitch, distance]
 	var views := [
 		["01-spawn", 10.0, 60.0, -1.0, 0.0, -0.3, 10.0],
@@ -326,3 +330,37 @@ func _run_test_mode(args: PackedStringArray) -> void:
 	print("silk test: silks=%d, spider at %s" % [spider.silk_count, spider.global_position])
 	get_viewport().get_texture().get_image().save_png(out + "/09-fil.png")
 	get_tree().quit()
+
+
+## Vues aériennes de toute la ville (pour présenter la map) : murs de la ruelle cachés, pas de brume.
+func _overview_shots(out: String) -> void:
+	hud.visible = false
+	spider.set_physics_process(false)
+	spider.global_position = Vector3(0, 4, 0)
+	for w in get_tree().get_nodes_in_group("alley_walls"):
+		w.visible = false
+	for n in get_children():
+		if n is DirectionalLight3D:
+			n.directional_shadow_max_distance = 4000.0
+		if n is WorldEnvironment:
+			n.environment.fog_enabled = false
+	cam.target = null
+	cam.arm.collision_mask = 0
+	var views := [
+		["vue-sud-est", PI * 0.25, -0.6, 1500.0, false],
+		["vue-sud-ouest", -PI * 0.25, -0.6, 1500.0, false],
+		["vue-nord", PI, -0.62, 1550.0, false],
+		["vue-dessus", 0.0, -PI / 2.0, 3000.0, true],
+	]
+	for v in views:
+		cam.global_position = Vector3(0, 0, 0)
+		cam.rotation = Vector3(v[2], v[1], 0)
+		cam.arm.spring_length = v[3]
+		cam.camera.fov = 50
+		if v[4]:
+			cam.camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+			cam.camera.size = 1260.0
+		for k in 40:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png(out + "/" + v[0] + ".png")
+		print("shot ", v[0])
