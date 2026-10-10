@@ -5,9 +5,10 @@ untouched) and adds accessories parented to its bones, so the idle / walk / jump
 animations and the procedural IK legs keep working:
 
   durag   satin durag with long tails on the carapace
-  joint   long hand-rolled cigarette held in the chelicerae, glowing tip and smoke
+  bandana paisley bandana tied over the lower face (Grove Street style)
+  joint   big fat cone joint held in the chelicerae, glowing end and smoke
   skull   realistic black-and-grey skull tattoos painted into the pixel-art atlas
-  girl    red stilettos on all eight feet, eyelashes, a bow and four handbags
+  girl    red stilettos on all eight feet, bigger eyes, long curled lashes and a bow
 
 Everything follows the source style: smooth shapes, small pixel-art textures sampled
 with nearest filtering. Blender is Z-up and the spider faces +Y (Godot: -Z forward).
@@ -23,7 +24,7 @@ from mathutils.bvhtree import BVHTree
 
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[-2:]
 SRC, OUT = argv[0], argv[1]
-VARIANTS = argv[2:] or ["durag", "joint", "skull", "girl"]
+VARIANTS = argv[2:] or ["durag", "bandana", "joint", "skull", "girl"]
 
 
 # --------------------------------------------------------------------------- helpers
@@ -142,6 +143,20 @@ def eye_centers(body):
     return out
 
 
+def enlarge_eyes(body, eyes, k):
+    """Scale the glossy eye bulges up around their centres (the mesh keeps its skinning)."""
+    me = body.data
+    inv = body.matrix_world.inverted()
+    idx = {i for p in me.polygons if p.material_index == 1 for i in p.vertices}
+    for i in idx:
+        co = body.matrix_world @ me.vertices[i].co
+        if co.z <= 0.5:
+            continue
+        c, r, front = min(eyes, key=lambda e: abs(e[0].x - co.x))
+        me.vertices[i].co = inv @ (c + (co - c) * k)
+    me.update()
+
+
 # --------------------------------------------------------------------------- variants
 def durag(rig, body):
     satin = material("durag_satin", hexes("2a0f3a", "45185e", "5e2580", "7d3aa6", "a35fcc"), rough=0.3, seed=3,
@@ -208,36 +223,142 @@ def durag(rig, body):
 
 
 def joint(rig, body):
+    """A big fat cone joint held in the chelicerae: twisted crutch end in the mouth,
+    wide lit end with ash and a glowing ember, smoke rising."""
     paper = material("joint_paper", hexes("cfc6b0", "e4dcc8", "f2ecdf", "fbf8f0"), rough=0.85, seed=5,
-                     pattern=lambda u, v: -0.25 if int(v * 16) % 5 == 0 else 0)
+                     pattern=lambda u, v: -0.3 if abs(u - 0.5) < 0.04 else 0)
     crutch = material("joint_crutch", hexes("8a6a3a", "a8844e", "c4a066"), rough=0.9, seed=6)
     ember = material("joint_ember", hexes("ff4a12", "ff7a1e", "ffb43a", "ffe08a"), rough=0.6, emit=4, seed=7)
-    ash = material("joint_ash", hexes("3a3633", "5a5550", "7c7670"), rough=1, seed=8)
+    ash = material("joint_ash", hexes("3a3633", "5a5550", "7c7670", "9a948c"), rough=1, seed=8)
     smoke = material("joint_smoke", hexes("8a8784", "a5a29e", "c2bfbb"), rough=1, alpha=0.4, seed=9)
-    mouth = Vector((0.02, 0.6, 0.3))
-    d = Vector((0.32, 0.92, 0.2)).normalized()
-    length = 0.72
+    mouth = Vector((0.03, 0.6, 0.28))
+    d = Vector((0.3, 0.92, 0.12)).normalized()
+    length = 0.8
     tip = mouth + d * length
-    finish(rod(mouth, mouth + d * 0.1, 0.03, 0.033), crutch, rig, "body", "joint_crutch")
-    finish(rod(mouth + d * 0.1, tip - d * 0.03, 0.033, 0.046, verts=12), paper, rig, "body", "joint_paper")
-    finish(rod(tip - d * 0.03, tip, 0.046, 0.04, verts=12), ash, rig, "body", "joint_ash")
-    glow = add("uv_sphere", segments=10, ring_count=6, radius=0.036, location=tip)
+    finish(rod(mouth - d * 0.02, mouth + d * 0.12, 0.034, 0.04, verts=10), crutch, rig, "body", "joint_crutch")
+    # The cone: thin at the mouth, fat at the lit end, with a slight bulge.
+    cone = rod(mouth + d * 0.12, tip - d * 0.05, 0.042, 0.1, verts=16)
+    finish(cone, paper, rig, "body", "joint_paper")
+    finish(rod(tip - d * 0.05, tip, 0.1, 0.085, verts=16), ash, rig, "body", "joint_ash")
+    glow = add("cylinder", vertices=16, radius=0.07, depth=0.02)
+    align(glow, tip - d * 0.005, tip + d * 0.012)
+    glow.scale.z = 0.02
     finish(glow, ember, rig, "body", "joint_ember")
-    # A few puffs of smoke curling up from the tip.
-    for i, (dx, dz, r) in enumerate([(0.0, 0.08, 0.035), (0.04, 0.19, 0.05), (-0.01, 0.33, 0.06)]):
-        puff = add("ico_sphere", subdivisions=2, radius=r, location=tip + Vector((dx, 0.02 * i, dz)))
+    # Thick smoke rising from the lit end.
+    for i, (dx, dz, r) in enumerate([(0.0, 0.1, 0.06), (0.05, 0.24, 0.08), (-0.02, 0.42, 0.1), (0.05, 0.62, 0.12)]):
+        puff = add("ico_sphere", subdivisions=2, radius=r, location=tip + Vector((dx, 0.03 * i, dz)))
         finish(puff, smoke, rig, "body", f"joint_smoke_{i}")
     light = bpy.data.lights.new("joint_glow", "POINT")
     light.color = (1, 0.45, 0.15)
-    light.energy = 0.03
+    light.energy = 0.05
     lo = bpy.data.objects.new("joint_glow", light)
     bpy.context.collection.objects.link(lo)
-    lo.location = tip
+    lo.location = tip + d * 0.05
     b = rig.data.bones["body"]
     lo.parent = rig
     lo.parent_type = "BONE"
     lo.parent_bone = "body"
     lo.matrix_parent_inverse = (rig.matrix_world @ b.matrix_local @ Matrix.Translation((0, b.length, 0))).inverted()
+
+
+def paisley(u, v):
+    """Paisley bandana print, two motifs per tile: a teardrop with a dark outline,
+    a light centre dot and a few light specks around."""
+    a, b = (u * 2) % 1, (v * 2) % 1
+    flip = (int(u * 2) + int(v * 2)) % 2
+    if flip:
+        a, b = 1 - a, 1 - b
+    dx, dy = a - 0.42, b - 0.42
+    # Teardrop: a circle stretched into a curled tail toward the top right.
+    r = math.hypot(dx, dy)
+    tail = max(0, (dx + dy) * 0.7)
+    rr = r - tail * 0.35
+    if rr < 0.07:
+        return 0.9
+    if rr < 0.17:
+        return 0.0 if rr > 0.12 else 0.9 * (int((a + b) * 20) % 2)
+    if rr < 0.22:
+        return -0.9
+    if (int(a * 16) * 7 + int(b * 16) * 3) % 11 == 0:
+        return 0.9
+    return 0.0
+
+
+def bandana(rig, body):
+    """Grove Street style: a paisley bandana tied over the lower face like a mask,
+    covering the chelicerae, knotted at the back of the head."""
+    cloth = material("bandana_paisley", hexes("0b2f12", "1d6a2c", "24803a", "d9ead2"), rough=0.85, seed=21,
+                     pattern=paisley, size=32)
+    bvh = surface(body)
+    # Triangle of cloth in front of the face: rows from just under the eyes down to a point.
+    bm = bmesh.new()
+    uvl = bm.loops.layers.uv.new()
+    rows = []
+    top, bottom, half = 0.53, -0.02, 0.37
+    nz, nx = 12, 12
+    for i in range(nz + 1):
+        t = i / nz
+        z = top + (bottom - top) * t
+        w = half * (1 - t) ** 0.9 + 0.015
+        row = []
+        for j in range(nx + 1):
+            x = -w + 2 * w * j / nx
+            hit = bvh.ray_cast(Vector((x, 3, z)), Vector((0, -1, 0)))
+            y = (hit[0].y if hit[0] else 0.55) + 0.06
+            # Hang straight down in front of the chelicerae, wrap back at the sides.
+            y = max(y, 0.66 - 0.5 * (x / half) ** 2) if z < 0.4 else y
+            row.append(bm.verts.new((x, y, z)))
+        rows.append(row)
+    for i in range(nz):
+        for j in range(nx):
+            f = bm.faces.new((rows[i][j], rows[i][j + 1], rows[i + 1][j + 1], rows[i + 1][j]))
+            for loop, (uu, vv) in zip(f.loops, ((j, i), (j + 1, i), (j + 1, i + 1), (j, i + 1))):
+                loop[uvl].uv = (uu / nx * 2, 1 - vv / nz * 2)
+    me = bpy.data.meshes.new("bandana_mask")
+    bm.to_mesh(me)
+    bm.free()
+    mask = bpy.data.objects.new("bandana_mask", me)
+    bpy.context.collection.objects.link(mask)
+    sol = mask.modifiers.new("thick", "SOLIDIFY")
+    sol.thickness = 0.014
+    bpy.context.view_layer.objects.active = mask
+    bpy.ops.object.modifier_apply(modifier="thick")
+    finish(mask, cloth, rig, "body", "bandana_mask")
+    # Band around the head at the top edge, from the cheeks to the knot at the back.
+    pts = []
+    for k in range(25):
+        ang = math.radians(-20 + 220 * k / 24)  # from the right cheek round the back to the left cheek
+        dirv = Vector((math.cos(ang), math.sin(ang) * -1, 0))
+        # Cast from inside the head outward, so the legs never get in the way.
+        o = Vector((0, 0.18, 0.53))
+        hit = bvh.ray_cast(o, dirv, 0.6)
+        p = (hit[0] if hit[0] else o + dirv * 0.35) + dirv * 0.03
+        pts.append((p.x, p.y, p.z))
+    curve = bpy.data.curves.new("band", "CURVE")
+    curve.dimensions = "3D"
+    sp = curve.splines.new("POLY")
+    sp.points.add(len(pts) - 1)
+    for pt, c in zip(sp.points, pts):
+        pt.co = (*c, 1)
+    curve.bevel_depth = 0.03
+    curve.bevel_resolution = 1
+    band = bpy.data.objects.new("bandana_band", curve)
+    bpy.context.collection.objects.link(band)
+    bpy.ops.object.select_all(action="DESELECT")
+    band.select_set(True)
+    bpy.context.view_layer.objects.active = band
+    bpy.ops.object.convert(target="MESH")
+    band = bpy.context.active_object
+    finish(band, cloth, rig, "body", "bandana_band")
+    # Knot and two short tails at the back of the head.
+    back = bvh.ray_cast(Vector((0, -1.5, 0.55)), Vector((0, 1, 0)))[0] or Vector((0, -0.1, 0.55))
+    knot = add("uv_sphere", segments=10, ring_count=6, radius=0.055, location=back + Vector((0, -0.04, 0.02)))
+    finish(knot, cloth, rig, "body", "bandana_knot")
+    for k in (1, -1):
+        tail = add("cube", size=1, location=back + Vector((k * 0.05, -0.1, -0.03)))
+        tail.scale = (0.06, 0.14, 0.012)
+        tail.rotation_euler = (0.5, 0, k * 0.4)
+        finish(tail, cloth, rig, "body", f"bandana_tail_{'R' if k > 0 else 'L'}")
 
 
 def skull_shade(u, v):
@@ -345,14 +466,9 @@ def girl(rig, body):
     red = material("heel_red", hexes("6e0a12", "a3101e", "d11a2a", "f04a55"), rough=0.2, seed=11)
     black = material("lash_black", hexes("050505", "121212", "222222"), rough=0.35, seed=12)
     pink = material("bow_pink", hexes("b0386e", "d9559a", "f07ab8", "ffa8d4"), rough=0.5, seed=13)
-    gold = material("bag_gold", hexes("8a6414", "c9971e", "f0c64a"), rough=0.25, metal=1, seed=14)
-    bags = [
-        material("bag_pink", hexes("a8306a", "d04a8c", "ec73ad"), rough=0.4, seed=15),
-        material("bag_red", hexes("6a0c14", "9a1420", "c42230"), rough=0.3, seed=16),
-        material("bag_leopard", hexes("3a2210", "c48a3c", "dca456", "e8bc72"), rough=0.6, seed=17,
-                 pattern=lambda u, v: -0.9 if (math.sin(u * 37) + math.sin(v * 41 + u * 9)) > 1.3 else 0.2),
-        material("bag_black", hexes("0c0c0e", "1c1c20", "303036"), rough=0.3, seed=18),
-    ]
+    eyes = eye_centers(body)
+    enlarge_eyes(body, eyes, 1.3)
+    eyes = eye_centers(body)
     # Red stilettos on all eight feet.
     for side in ("R", "L"):
         for k in range(1, 5):
@@ -368,13 +484,42 @@ def girl(rig, body):
             sole = rod(tip + Vector((0, 0, 0.0)), heel_top, 0.022, 0.03, verts=6)
             sole.scale.x = 2.0
             finish(sole, red, rig, b.name, n + "_sole")
-    # Eyelashes over the four front eyes, curling up and out.
-    for c, r, front in eye_centers(body):
-        for j in range(5):
-            a = math.radians(45 + 22.5 * j)
-            base = Vector((c.x + math.cos(a) * r * 0.8, front - 0.025, c.z + math.sin(a) * r * 0.8))
-            outw = Vector((math.cos(a) * 0.6, 1.0, math.sin(a) * 0.6 + 0.25)).normalized()
-            finish(rod(base, base + outw * (0.035 + 0.012 * (j % 2)), 0.008, 0.0015, verts=5), black, rig, "body", f"lash_{j}_{round(c.x, 2)}")
+    # Long curled lashes over the four front eyes, flicked out at the outer corners.
+    for c, r, front in eyes:
+        outer = 1 if c.x > 0 else -1
+        count = 7 if abs(c.x) < 0.12 else 5
+        for j in range(count):
+            t = j / (count - 1)
+            a = math.radians(30 + 120 * t)
+            if outer < 0:
+                a = math.pi - a  # mirror so the long ones sit on the outer side
+            base = Vector((c.x + math.cos(a) * r * 0.92, front - 0.03, c.z + math.sin(a) * r * 0.92))
+            length = 0.05 + 0.035 * (1 - t)  # longer toward the outer corner
+            radial = Vector((math.cos(a), 0, math.sin(a)))
+            # Out from the eye, then curling up and back: a 4-point curve with a taper.
+            p0 = base
+            p1 = p0 + (radial * 0.5 + Vector((0, 0.9, 0.1))).normalized() * length * 0.45
+            p2 = p1 + (radial * 0.4 + Vector((0, 0.35, 0.9))).normalized() * length * 0.35
+            p3 = p2 + (radial * 0.2 + Vector((0, -0.4, 0.9))).normalized() * length * 0.25
+            curve = bpy.data.curves.new("lash", "CURVE")
+            curve.dimensions = "3D"
+            sp = curve.splines.new("NURBS")
+            sp.points.add(3)
+            for pt, q, rad in zip(sp.points, (p0, p1, p2, p3), (1.0, 0.8, 0.5, 0.15)):
+                pt.co = (*q, 1)
+                pt.radius = rad
+            sp.order_u = 3
+            sp.use_endpoint_u = True
+            curve.bevel_depth = 0.008
+            curve.bevel_resolution = 1
+            curve.resolution_u = 4
+            lash = bpy.data.objects.new("lash", curve)
+            bpy.context.collection.objects.link(lash)
+            bpy.ops.object.select_all(action="DESELECT")
+            lash.select_set(True)
+            bpy.context.view_layer.objects.active = lash
+            bpy.ops.object.convert(target="MESH")
+            finish(bpy.context.active_object, black, rig, "body", f"lash_{round(c.x, 2)}_{j}")
     # A pink bow on top of the head, a little to the side.
     bow_c = Vector((0.14, 0.24, 0.71))
     for k in (1, -1):
@@ -384,34 +529,9 @@ def girl(rig, body):
         finish(loop, pink, rig, "body", f"bow_{'R' if k > 0 else 'L'}")
     knot = add("uv_sphere", segments=10, ring_count=6, radius=0.03, location=bow_c)
     finish(knot, pink, rig, "body", "bow_knot")
-    # Four handbags hooked on the front legs.
-    for (side, k), mat in zip([("R", 1), ("L", 1), ("R", 2), ("L", 2)], bags):
-        b = rig.data.bones[f"leg_{side}{k}_tibia"]
-        h = rig.matrix_world @ b.head_local
-        t = rig.matrix_world @ b.tail_local
-        mid = h.lerp(t, 0.45)
-        axis = (t - h).normalized()
-        out = Vector((mid.x, mid.y - 0.1, 0)).normalized()
-        handle = add("torus", major_radius=0.09, minor_radius=0.013, major_segments=16, minor_segments=6, location=mid + out * 0.05 - Vector((0, 0, 0.06)))
-        handle.rotation_mode = "QUATERNION"
-        handle.rotation_quaternion = Vector((0, 0, 1)).rotation_difference(axis)
-        finish(handle, gold if k == 2 else mat, rig, b.name, f"bag_{side}{k}_handle")
-        out = Vector((mid.x, mid.y - 0.1, 0)).normalized()  # away from the body
-        bag = add("cube", size=1, location=mid + out * 0.1 - Vector((0, 0, 0.2)))
-        bag.scale = (0.2, 0.09, 0.15)
-        bag.rotation_euler.z = math.atan2(out.y, out.x) + math.pi / 2
-        bev = bag.modifiers.new("round", "BEVEL")
-        bev.width = 0.025
-        bev.segments = 3
-        bpy.context.view_layer.objects.active = bag
-        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-        bpy.ops.object.modifier_apply(modifier="round")
-        finish(bag, mat, rig, b.name, f"bag_{side}{k}")
-        clasp = add("cube", size=0.035, location=mid + out * 0.15 - Vector((0, 0, 0.15)))
-        finish(clasp, gold, rig, b.name, f"bag_{side}{k}_clasp")
 
 
-BUILDERS = {"durag": durag, "joint": joint, "skull": skull, "girl": girl}
+BUILDERS = {"durag": durag, "bandana": bandana, "joint": joint, "skull": skull, "girl": girl}
 
 for name in VARIANTS:
     rig, body = load()
