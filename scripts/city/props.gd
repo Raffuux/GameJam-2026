@@ -1,30 +1,22 @@
 extends RefCounted
 ## Le mobilier urbain et les déchets, à l'échelle d'un insecte (1 unité = 1 cm).
-## Chaque fonction pose les meshes ET les collisions. Si un modèle .glb du même nom
-## existe dans res://assets/models/, il remplace la version en primitives.
+## Chaque fonction pose les meshes ET les collisions. Si le modèle .glb correspondant
+## existe dans res://assets/models/ (fil des assets), il remplace la version en primitives.
 
-const MODELS_DIR := "res://assets/models/"
 const Builder := preload("res://scripts/city/builder.gd")
 
 
-## Essaie de poser le modèle .glb du thread assets. Renvoie true si c'est fait.
-## Les collisions des primitives restent, pour garder un gameplay stable.
-static func try_model(b: Builder, model: String, pos: Vector3, rot_y: float = 0.0, scale: float = 1.0) -> bool:
-	var path := MODELS_DIR + model + ".glb"
-	if not ResourceLoader.exists(path):
-		return false
-	var scene: PackedScene = load(path)
-	var inst := scene.instantiate() as Node3D
-	inst.position = pos
-	inst.rotation.y = rot_y
-	inst.scale = Vector3.ONE * scale
-	b.root.add_child(inst)
-	return true
+## Pose le modèle .glb du fil des assets (taille ajustée à `fit`, collision en boîte).
+## Renvoie false s'il n'existe pas : on construit alors la version en primitives.
+static func try_model(b: Builder, model: String, pos: Vector3, rot_y: float, fit: Vector3, kind: String = "") -> bool:
+	return b.model(model, pos, rot_y, fit, true, null, kind) != Vector3.ZERO
 
 
 # ---------- Rue ----------
 
 static func streetlight(b: Builder, pos: Vector3, rot_y: float) -> void:
+	if try_model(b, "street_lamp", pos, rot_y, Vector3(0, 32, 0)):
+		return
 	var g: Node3D = b.group(pos, rot_y)
 	b.cyl(Vector3.ZERO, 0.5, 0.7, 32.0, Color("3a3f45"), true, 6, g)
 	b.box(Vector3(0, 31, -3), Vector3(0.8, 0.8, 7), Color("3a3f45"), false, 0.0, g)
@@ -32,8 +24,7 @@ static func streetlight(b: Builder, pos: Vector3, rot_y: float) -> void:
 
 
 static func hydrant(b: Builder, pos: Vector3) -> void:
-	if try_model(b, "bouche_incendie", pos):
-		b.cyl(pos, 2.0, 2.0, 7.0, Color(), true).visible = false
+	if try_model(b, "fire_hydrant", pos, b.rand(0, TAU), Vector3(0, 8, 0)):
 		return
 	var red := Color("c8312a")
 	b.cyl(pos, 2.0, 2.2, 6.0, red)
@@ -45,8 +36,7 @@ static func hydrant(b: Builder, pos: Vector3) -> void:
 
 
 static func soda_can(b: Builder, pos: Vector3, color: Color, lying: bool = false) -> void:
-	if not lying and try_model(b, "canette", pos, b.rand(0, TAU)):
-		b.cyl(pos, 3.3, 3.3, 12.0, Color(), true).visible = false
+	if b.rng.randf() < 0.6 and try_model(b, "soda_can_lying" if lying else "soda_can", pos, b.rand(0, TAU), Vector3.ONE * 12.0 if lying else Vector3(0, 12, 0)):
 		return
 	if lying:
 		var rot := b.rand(0, TAU)
@@ -61,13 +51,14 @@ static func soda_can(b: Builder, pos: Vector3, color: Color, lying: bool = false
 
 
 static func bottle_cap(b: Builder, pos: Vector3, color: Color) -> void:
-	if try_model(b, "capsule", pos, b.rand(0, TAU)):
-		b.cyl(pos, 1.6, 1.6, 0.7, Color(), true).visible = false
+	if b.rng.randf() < 0.5 and try_model(b, "bottle_cap", pos, b.rand(0, TAU), Vector3(3.2, 0, 3.2)):
 		return
 	b.cyl(pos, 1.6, 1.6, 0.7, b.mat(color, 0.4, {"metallic": 0.5}), true, 14)
 
 
 static func cigarette_butt(b: Builder, pos: Vector3) -> void:
+	if b.model("cigarette_butt", pos, b.rand(0, TAU), Vector3.ONE * 2.4, false) != Vector3.ZERO:
+		return
 	var g: Node3D = b.group(pos, b.rand(0, TAU))
 	var f: MeshInstance3D = b.cyl(Vector3.ZERO, 0.4, 0.4, 2.2, Color("d9893a"), false, 8, g)
 	f.rotation.z = PI / 2.0
@@ -78,12 +69,13 @@ static func cigarette_butt(b: Builder, pos: Vector3) -> void:
 
 
 static func paper_ball(b: Builder, pos: Vector3, r: float) -> void:
+	if try_model(b, "crumpled_paper", pos, b.rand(0, TAU), Vector3.ONE * r * 2.0):
+		return
 	b.sphere(pos + Vector3(0, r * 0.8, 0), r, Color("eeeae0"), Vector3(1, 0.85, 1.1))
 
 
 static func trash_bag(b: Builder, pos: Vector3, r: float) -> void:
-	if try_model(b, "sac_poubelle", pos, b.rand(0, TAU), r / 6.0):
-		b.sphere(pos + Vector3(0, r * 0.75, 0), r, Color(), Vector3(1.1, 0.85, 1.0)).visible = false
+	if try_model(b, "trash_bag", pos, b.rand(0, TAU), Vector3.ONE * r * 2.0):
 		return
 	b.sphere(pos + Vector3(0, r * 0.75, 0), r, b.mat(Color("1d1f22"), 0.25), Vector3(1.1, 0.85, 1.0))
 	b.cyl(pos + Vector3(0, r * 1.45, 0), 0.6, r * 0.25, r * 0.4, b.mat(Color("1d1f22"), 0.25), false, 6)
@@ -169,8 +161,7 @@ static func web_decor(b: Builder, center: Vector3, r: float, rot_y: float) -> vo
 
 ## Benne à ordures humaine : 180 x 100 cm, un immeuble à l'échelle des mouches.
 static func dumpster(b: Builder, pos: Vector3, rot_y: float) -> void:
-	if try_model(b, "benne", pos, rot_y):
-		b.box(pos, Vector3(180, 120, 100), Color(), true, rot_y, null, "landmark").visible = false
+	if try_model(b, "dumpster", pos, rot_y, Vector3(180, 0, 0), "landmark"):
 		b.landmark("La Benne", pos)
 		return
 	var g: Node3D = b.group(pos, rot_y)

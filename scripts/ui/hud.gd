@@ -287,17 +287,9 @@ func _draw_fullmap_overlay() -> void:
 	var to_map := func(p: Vector3) -> Vector2:
 		return origin + MapImage.to_px(p.x, p.z) / MapImage.SIZE * side
 	var f := ThemeDB.fallback_font
-	# noms des quartiers, une fois par quartier, au centre de ses pâtés
-	var sums := {}
-	for j in 4:
-		for i in 4:
-			var z: String = Layout.BLOCKS[j][i]
-			if not sums.has(z):
-				sums[z] = [Vector2.ZERO, 0]
-			sums[z][0] += Layout.block_rect(i, j).get_center()
-			sums[z][1] += 1
-	for z in sums:
-		var c: Vector2 = sums[z][0] / sums[z][1]
+	# noms des quartiers, au cœur de chaque territoire
+	for z in Layout.ZONES:
+		var c: Vector2 = Layout.ZONES[z]["seed"]
 		var p: Vector2 = to_map.call(Vector3(c.x, 0, c.y))
 		var zd: Dictionary = Layout.ZONES[z]
 		var title: String = zd["name"]

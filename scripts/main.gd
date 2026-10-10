@@ -41,7 +41,7 @@ func _ready() -> void:
 
 	hud = Hud.new()
 	add_child(hud)
-	hud.setup(MapImage.render(b.footprints, city.puddle_center, City.PUDDLE_R), b.landmarks, coins)
+	hud.setup(MapImage.render(b.footprints, city.puddle_center, Layout.PUDDLE_R), b.landmarks, coins)
 	spider.message.connect(func(text): hud.show_toast(text, 2.2))
 	spider.silk_changed.connect(func(n): hud.set_silk(n))
 
@@ -163,46 +163,42 @@ func _on_coin(body: Node, coin: Area3D) -> void:
 	hud.show_toast("+$%d   %s : encore %d" % [COIN_VALUE, name_z, left] if left > 0 else "%s : toutes les pièces trouvées !" % name_z, 2.5)
 
 
-## Des membres de gang (modèles du bestiaire) qui traînent dans leur territoire.
+## Des membres de gang (modèles du fil des assets) qui patrouillent sur les trottoirs de leur territoire.
+const GANG_MODELS := {
+	"tisseuses": ["spider_tisseuses", Vector3(0, 0, 2.2)],
+	"prieurs": ["mantis_prieurs", Vector3(0, 0, 7.0)],
+	"nuee": ["fly_nuee", Vector3(0, 0, 2.6)],
+	"colonie": ["ant_colonie", Vector3(0, 0, 2.6)],
+}
+const PER_GANG := 10
+var gang_members: Array = []
+
+
 func _place_gang_members(b) -> void:
-	var models := {"prieurs": "mante", "nuee": "mouche", "colonie": "fourmi", "tisseuses": "epeire"}
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 99
-	for zone in models:
-		var path: String = "res://assets/models/%s.glb" % models[zone]
-		if not ResourceLoader.exists(path):
+	for zone in GANG_MODELS:
+		var spots: Array = city.sidewalk_points.get(zone, [])
+		if spots.is_empty():
 			continue
-		var scene: PackedScene = load(path)
-		var color: Color = Layout.ZONES[zone]["color"]
-		var placed := 0
-		for j in 4:
-			for i in 4:
-				if Layout.zone_of_block(i, j) != zone or Layout.SPECIAL.get(Vector2i(i, j), "") == "puddle":
-					continue
-				var r := Layout.block_rect(i, j)
-				for k in 3:
-					# sur le trottoir, près d'un coin de rue
-					var corner := Vector3(r.position.x + 10 if k % 2 else r.end.x - 10, Layout.CURB_H, r.position.y + 10 + k * 40.0)
-					var npc: Node3D = scene.instantiate()
-					npc.position = corner
-					npc.rotation.y = rng.randf_range(0, TAU)
-					var s := 1.5 if zone == "prieurs" else 2.2
-					npc.scale = Vector3.ONE * s
-					add_child(npc)
-					# bandana / marque du gang : un petit anneau de couleur
-					var ring := MeshInstance3D.new()
-					var tm := TorusMesh.new()
-					tm.inner_radius = 0.5
-					tm.outer_radius = 0.75
-					ring.mesh = tm
-					var m := StandardMaterial3D.new()
-					m.albedo_color = color
-					m.emission_enabled = true
-					m.emission = color
-					ring.material_override = m
-					ring.position = Vector3(0, 1.0, 0.6)
-					npc.add_child(ring)
-					placed += 1
+		var step := maxi(1, spots.size() / PER_GANG)
+		for k in range(0, spots.size(), step):
+			var holder := Node3D.new()
+			add_child(holder)
+			var spot: Array = spots[k]
+			holder.position = spot[0]
+			if b.model(GANG_MODELS[zone][0], Vector3.ZERO, 0.0, GANG_MODELS[zone][1], false, holder) == Vector3.ZERO:
+				holder.queue_free()
+				break
+			gang_members.append({"node": holder, "origin": spot[0], "dir": spot[1], "phase": k * 1.7, "range": 18.0})
+
+
+## Aller-retour le long du trottoir, en se retournant au bout.
+func _move_gang_members() -> void:
+	for m in gang_members:
+		var s: float = t * 0.25 + m["phase"]
+		var dir: Vector3 = m["dir"]
+		m["node"].position = m["origin"] + dir * sin(s) * m["range"]
+		var facing: Vector3 = dir if cos(s) >= 0.0 else -dir
+		m["node"].rotation.y = atan2(facing.x, facing.z)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -227,6 +223,7 @@ func _process(dt: float) -> void:
 	spider.set_physics_process(not hud.intro_visible() and not hud.fullmap.visible)
 	for c in coins:
 		c.rotation.y = t * 2.0
+	_move_gang_members()
 	var p := spider.global_position
 	var zone := Layout.zone_at(p.x, p.z)
 	if zone != current_zone and not hud.intro_visible():
@@ -253,12 +250,12 @@ func _run_test_mode(args: PackedStringArray) -> void:
 		return
 	# [nom, x, z, y (ou -1 = surface), yaw caméra, pitch, distance]
 	var views := [
-		["01-spawn", 10.0, 60.0, -1.0, 0.0, -0.3, 10.0],
-		["02-centre-banque", -150.0, 30.0, -1.0, 0.0, -0.25, 60.0],
-		["03-toile", -320.0, -310.0, -1.0, 0.8, -0.3, 40.0],
-		["04-port", 330.0, -300.0, -1.0, -0.8, -0.35, 120.0],
-		["05-decharge", 460.0, 300.0, -1.0, PI, -0.3, 150.0],
-		["06-chantier", -460.0, 300.0, -1.0, PI + 0.3, -0.35, 170.0],
+		["01-spawn", 25.0, 150.0, -1.0, 0.0, -0.3, 10.0],
+		["02-centre-banque", -150.0, 15.0, -1.0, 0.0, -0.25, 60.0],
+		["03-toile", -430.0, -320.0, -1.0, 0.8, -0.3, 40.0],
+		["04-port", 330.0, -330.0, -1.0, -0.8, -0.35, 120.0],
+		["05-decharge", 300.0, 250.0, -1.0, -2.3, -0.3, 150.0],
+		["06-chantier", -360.0, 400.0, -1.0, 2.0, -0.3, 60.0],
 		["07-vue-haute", 0.0, 0.0, 420.0, 0.6, -0.6, 220.0],
 	]
 	for v in views:
@@ -282,7 +279,7 @@ func _run_test_mode(args: PackedStringArray) -> void:
 	# test d'escalade : face au mur de briques nord, on avance
 	print("legs animated: ", spider.legs.size(), "  nodes: ", get_tree().get_node_count())
 	spider.set_physics_process(true)
-	spider.global_position = Vector3(150, 6, -590)
+	spider.global_position = Vector3(-36, 6, -585)
 	cam.yaw = 0.0
 	cam.pitch = -0.2
 	cam.distance = 14
@@ -300,9 +297,9 @@ func _run_test_mode(args: PackedStringArray) -> void:
 	cam.yaw = 0.6
 	await get_tree().process_frame
 	get_viewport().get_texture().get_image().save_png(out + "/08-escalade.png")
-	# test du trottoir : depuis la rue, on monte sur le trottoir en avançant
+	# test du trottoir : depuis la chaussée, on passe sur le trottoir puis le sol en avançant
 	spider.climbing = false
-	spider.global_position = Vector3(5, 1, 100)
+	spider.global_position = Vector3(5, 2, 200)
 	cam.yaw = -PI / 2.0
 	for k in 20:
 		await get_tree().physics_frame
@@ -313,11 +310,11 @@ func _run_test_mode(args: PackedStringArray) -> void:
 	print("curb test: now at %s on_floor=%s" % [spider.global_position, spider.is_on_floor()])
 	# test du fil : un fil du trottoir vers le haut d'un lampadaire, puis on marche dessus
 	spider.set_physics_process(false)
-	spider.global_position = Vector3(-10, 0, 120)
+	spider.global_position = Vector3(20, 8, 130)
 	spider._toggle_silk()
-	spider.global_position = Vector3(-10, 30, 180)
+	spider.global_position = Vector3(20, 38, 190)
 	spider._toggle_silk()
-	spider.global_position = Vector3(-10, 5, 124)
+	spider.global_position = Vector3(20, 12, 136)
 	spider.velocity = Vector3.ZERO
 	spider.set_physics_process(true)
 	cam.yaw = PI
@@ -346,6 +343,7 @@ func _overview_shots(out: String) -> void:
 			n.environment.fog_enabled = false
 	cam.target = null
 	cam.arm.collision_mask = 0
+	cam.camera.near = 3.0
 	var views := [
 		["vue-sud-est", PI * 0.25, -0.6, 1500.0, false],
 		["vue-sud-ouest", -PI * 0.25, -0.6, 1500.0, false],

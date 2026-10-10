@@ -47,9 +47,68 @@ func _attach(node: Node3D, parent: Node3D) -> void:
 	(parent if parent else root).add_child(node)
 
 
+## Emprise orientée pour la minimap : centre, demi-tailles, rotation, hauteur du toit.
 func _record(mi: MeshInstance3D, kind: String) -> void:
-	var g: AABB = mi.global_transform * mi.get_aabb()
-	footprints.append({"rect": Rect2(g.position.x, g.position.z, g.size.x, g.size.z), "top": g.end.y, "kind": kind})
+	var local: AABB = mi.get_aabb()
+	var xf := mi.global_transform
+	record_footprint(xf * local.get_center(), local.size * xf.basis.get_scale(), xf.basis.get_euler().y, (xf * local).end.y, kind)
+
+
+func record_footprint(center: Vector3, size: Vector3, rot_y: float, top: float, kind: String) -> void:
+	footprints.append({"c": Vector2(center.x, center.z), "hx": size.x / 2.0, "hz": size.z / 2.0, "rot": rot_y, "top": top, "kind": kind})
+
+
+## Pose un modèle .glb (du fil des assets) mis à l'échelle pour tenir dans `fit` (0 = axe libre),
+## posé au sol en `pos`, avec une collision en boîte à sa taille. Renvoie sa taille finale, ou Vector3.ZERO s'il n'existe pas.
+func model(name: String, pos: Vector3, rot_y: float = 0.0, fit: Vector3 = Vector3.ZERO, solid: bool = true, parent: Node3D = null, kind: String = "") -> Vector3:
+	var path := "res://assets/models/%s.glb" % name
+	if not ResourceLoader.exists(path):
+		return Vector3.ZERO
+	var holder := Node3D.new()
+	_attach(holder, parent)
+	holder.position = pos
+	var inst: Node3D = load(path).instantiate()
+	holder.add_child(inst)
+	var box := _aabb_of(inst, holder)
+	var s := INF
+	for axis in 3:
+		if fit[axis] > 0.0 and box.size[axis] > 0.0001:
+			s = minf(s, fit[axis] / box.size[axis])
+	if s == INF:
+		s = 1.0
+	inst.scale = Vector3.ONE * s
+	box = _aabb_of(inst, holder)
+	inst.position = Vector3(-box.get_center().x, -box.position.y, -box.get_center().z)
+	holder.rotation.y = rot_y
+	if solid:
+		var body := StaticBody3D.new()
+		var cs := CollisionShape3D.new()
+		var shape := BoxShape3D.new()
+		shape.size = box.size
+		cs.shape = shape
+		cs.position.y = box.size.y / 2.0
+		body.add_child(cs)
+		holder.add_child(body)
+	if kind != "":
+		record_footprint(holder.global_position, box.size, rot_y, holder.global_position.y + box.size.y, kind)
+	for ap in inst.find_children("*", "AnimationPlayer", true, false):
+		var list: PackedStringArray = ap.get_animation_list()
+		if list.size() > 0:
+			ap.get_animation(list[0]).loop_mode = Animation.LOOP_LINEAR
+			ap.play(list[0])
+	return box.size
+
+
+## Boîte englobante d'un modèle, dans le repère de `ref`.
+func _aabb_of(n: Node3D, ref: Node3D) -> AABB:
+	var out := AABB()
+	var first := true
+	var inv := ref.global_transform.affine_inverse()
+	for m in n.find_children("*", "MeshInstance3D", true, false):
+		var a: AABB = (inv * m.global_transform) * m.get_aabb()
+		out = a if first else out.merge(a)
+		first = false
+	return out
 
 
 func _body_or_mesh(mesh: Mesh, material, pos: Vector3, rot_y: float, shape: Shape3D, parent: Node3D, shadow: bool) -> MeshInstance3D:

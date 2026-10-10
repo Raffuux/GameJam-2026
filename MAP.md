@@ -9,14 +9,19 @@ Projet **Godot 4.4** (renderer Compatibility, exportable en web). Ouvrir `projec
 
 ![Vue d'ensemble](docs/map/vue-ensemble.png)
 
+![Vue du dessus](docs/map/vue-dessus.png)
+
 ## Les quartiers et les gangs
 
-Grille de 4 x 4 pâtés de maisons séparés par des rues (avec trottoirs, passages piétons et marquages).
-Chaque quartier est teinté de la couleur de son gang sur le radar et sur la carte (touche **M**).
+Pas de grille : 14 rues courbes (avenues, boulevard en diagonale, ruelles tortueuses) avec trottoirs,
+passages piétons à l'entrée des carrefours et pointillés au centre. Les immeubles sont alignés le long des rues,
+façade vers la chaussée, puis l'arrière des îlots est rempli. Les quartiers ont des frontières qui serpentent ;
+quand une rue entre dans un territoire, une borne et une bande de peinture aux couleurs du gang le signalent.
+Chaque quartier est teinté de la couleur de son gang au sol, sur le radar et sur la carte (touche **M**).
 
 | Quartier | Gang | Couleur | Ce qu'on y trouve |
 |---|---|---|---|
-| Le Centre-Ville | neutre | beige | la Banque Centrale (colonnes en crayons, piles de pièces), les plus hautes tours, le parc avec une fontaine-capsule et la bouche d'incendie géante |
+| Le Centre-Ville | neutre | beige | la Banque Centrale (colonnes en crayons, piles de pièces), les plus hautes tours au cœur, le parc rond avec une fontaine-capsule et la bouche d'incendie géante |
 | La Toile (nord-ouest) | Les Tisseuses (araignées) | violet | ruelles serrées, immeubles sombres, néons, toiles tendues entre les toits (on peut marcher dessus) |
 | Le Port de la Flaque (nord-est) | Les Prieurs (mantes) | rouge | une flaque d'eau sur laquelle on marche, pontons en bâtons de glace, conteneurs en boîtes d'allumettes, entrepôts |
 | La Décharge (sud-est) | La Nuée (mouches) | bleu | la benne à ordures géante, sacs poubelle, part de pizza, trognon de pomme, cabanes en bâche |
@@ -37,8 +42,8 @@ En fond : murs de briques de la ruelle, une épicerie au sud, et un skyline de g
 
 | Fichier | Rôle |
 |---|---|
-| `scripts/city/layout.gd` | le plan : quartiers, gangs, couleurs, quel pâté est spécial |
-| `scripts/city/city.gd` | construit la ville (rues, immeubles par quartier, lieux spéciaux, fond) |
+| `scripts/city/layout.gd` | le plan : quartiers (centre et frontières), tracé des rues, lieux spéciaux |
+| `scripts/city/city.gd` | construit la ville (sol, rues courbes, immeubles le long des rues, lieux spéciaux, fond) |
 | `scripts/city/props.gd` | mobilier urbain et déchets, un objet par fonction |
 | `scripts/city/builder.gd` | primitives avec collisions, fils de soie |
 | `scripts/player/spider.gd` | déplacement, escalade, fils |
@@ -46,12 +51,17 @@ En fond : murs de briques de la ruelle, une épicerie au sud, et un skyline de g
 
 Tout est généré en code au lancement avec une graine fixe : la ville est identique à chaque partie.
 
-### Brancher les modèles du bestiaire
+Pour modifier la ville : déplacer les points d'une rue dans `ROADS`, le cœur d'un quartier dans `ZONES`
+(`seed`), ou un lieu dans `SITES`. Les immeubles se replacent tout seuls autour.
 
-- `assets/models/epeire.glb` sert de joueuse (sinon une araignée en primitives).
-- `mante`, `mouche`, `fourmi` et `epeire` sont placés comme membres de gangs dans leur territoire.
-- Si ces fichiers existent dans `assets/models/`, ils remplacent les primitives sans changer les collisions :
-  `benne.glb`, `bouche_incendie.glb`, `canette.glb`, `sac_poubelle.glb`, `capsule.glb`.
+### Modèles du fil des assets (`assets/models/`)
+
+- `epeire.glb` sert de joueuse (sinon une araignée en primitives).
+- Membres de gang qui patrouillent sur les trottoirs de leur territoire : `spider_tisseuses`, `mantis_prieurs`, `fly_nuee`, `ant_colonie`.
+- Mobilier et déchets : `fire_hydrant`, `soda_can`, `soda_can_lying`, `bottle_cap`, `trash_bag`, `crumpled_paper`, `cigarette_butt`, `street_lamp`, `dumpster`.
+- Gangs : `flag_<gang>` sur les toits et trottoirs, `marker_<gang>` aux entrées de territoire.
+- Immeubles : `building_tower` (centre), `building_carton` (Décharge), `building_box` (Chantier), plus `scaffolding` et `anthill` au chantier.
+- Chaque modèle est mis à l'échelle et reçoit une collision en boîte. S'il manque, la version en primitives prend le relais.
 
 ### Captures automatiques
 
@@ -66,5 +76,5 @@ Avec `-- --shots=/tmp/shots --overview`, il fait plutôt des vues aériennes de 
 ## Pistes pour la suite
 
 - Véhicules insectes (scarabée, coccinelle) sur les rues
-- Gangs qui patrouillent et réagissent quand on entre dans leur territoire
+- Gangs qui réagissent quand on entre dans leur territoire
 - Missions de livraison et prise de territoire
