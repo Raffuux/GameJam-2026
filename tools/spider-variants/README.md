@@ -9,7 +9,7 @@ de marcher.
 |---|---|---|
 | durag | `jumping_spider_durag_<couleur>` | durag satiné avec un nœud et deux longues queues sur l'abdomen |
 | bandana | `jumping_spider_bandana_<couleur>` | bandana paisley noué sur le bas du visage, façon Grove Street |
-| cap | `jumping_spider_cap_<couleur>` | casquette portée devant : dôme, visière sur les yeux, bouton et « S » blanc |
+| cap | `jumping_spider_cap_<couleur>` | casquette portée devant, assez haut pour dégager les yeux : dôme, visière relevée, bouton et « S » blanc |
 | joint | `jumping_spider_joint` | gros joint conique dans les chélicères, bout incandescent, fumée et petite lumière |
 | skull | `jumping_spider_skull` | tatouages tête de mort noir et gris peints dans l'atlas pixel-art (abdomen + carapace) |
 | girl | `jumping_spider_girl` | talons aiguilles rouges aux 8 pattes, yeux agrandis, longs cils recourbés |

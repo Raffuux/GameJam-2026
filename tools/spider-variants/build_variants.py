@@ -542,7 +542,7 @@ def cap(rig, body, color="green"):
     a top button and a white letter on the front panel."""
     felt = material(f"cap_{color}", shades(COLORS[color], (0.5, 0.8, 1.0, 1.15)), rough=0.8, seed=31)
     white = material("cap_logo", hexes("d8d4ca", "ece8de", "f8f6f0"), rough=0.6, seed=32)
-    cy, cz, rx, ry, rz = 0.25, 0.66, 0.31, 0.3, 0.26
+    cy, cz, rx, ry, rz = 0.2, 0.74, 0.31, 0.31, 0.25
     crown = add("uv_sphere", segments=32, ring_count=16, radius=1, location=(0, cy, cz))
     crown.scale = (rx, ry, rz)
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
@@ -559,11 +559,11 @@ def cap(rig, body, color="green"):
     finish(crown, felt, rig, "body", "cap_crown")
     # Half-disc brim from the front of the dome, tilted down and curved at the sides.
     bm = bmesh.new()
-    y0, depth, half = cy + ry * 0.8, 0.32, 0.28
+    y0, depth, half = cy + ry * 0.8, 0.26, 0.27
     pts = [(half * math.cos(t), depth * math.sin(t)) for t in (math.pi * k / 16 for k in range(17))]
     verts = []
     for x, d in pts:
-        verts.append(bm.verts.new((x, y0 + d, cz + 0.01 - 0.12 * max(0, d - 0.1) - 0.05 * (x / half) ** 2)))
+        verts.append(bm.verts.new((x, y0 + d, cz - 0.01 + 0.45 * d - 0.04 * (x / half) ** 2)))
     bm.faces.new(verts)
     bmesh.ops.triangulate(bm, faces=bm.faces[:])
     uv = bm.loops.layers.uv.new("UVMap")
