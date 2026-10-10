@@ -7,6 +7,7 @@ const Spider := preload("res://scripts/player/spider.gd")
 const FollowCamera := preload("res://scripts/player/follow_camera.gd")
 const Hud := preload("res://scripts/ui/hud.gd")
 const MapImage := preload("res://scripts/ui/map_image.gd")
+const FilmLook := preload("res://scripts/fx/film_look.gd")
 
 const COINS_PER_ZONE := 5
 const COIN_VALUE := 100
@@ -39,6 +40,7 @@ func _ready() -> void:
 	_place_coins(b)
 	_place_gang_members(b)
 
+	add_child(FilmLook.new())
 	hud = Hud.new()
 	add_child(hud)
 	hud.setup(MapImage.render(b.footprints, city.puddle_center, Layout.PUDDLE_R), b.landmarks, coins)
@@ -70,13 +72,13 @@ func _setup_input() -> void:
 			InputMap.action_add_event(action, ev)
 
 
-## Lumière de fin d'après-midi dorée, brume de ville : l'ambiance Los Santos.
+## Fin de journée sous un ciel lourd, brume de pollution : une ambiance de rue sombre et sale.
 func _setup_environment() -> void:
 	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color("3d6fb0")
-	sky_mat.sky_horizon_color = Color("f0c9a0")
-	sky_mat.ground_horizon_color = Color("c9a888")
-	sky_mat.ground_bottom_color = Color("3a3530")
+	sky_mat.sky_top_color = Color("2b3d55")
+	sky_mat.sky_horizon_color = Color("b08a68")
+	sky_mat.ground_horizon_color = Color("7a6450")
+	sky_mat.ground_bottom_color = Color("201c18")
 	sky_mat.sun_angle_max = 20.0
 	var sky := Sky.new()
 	sky.sky_material = sky_mat
@@ -84,23 +86,23 @@ func _setup_environment() -> void:
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.tonemap_exposure = 0.85
-	env.ambient_light_energy = 0.45
+	env.tonemap_exposure = 0.84
+	env.ambient_light_energy = 0.4
 	env.ambient_light_sky_contribution = 0.6
-	env.ambient_light_color = Color("b8a890")
+	env.ambient_light_color = Color("8a7c6c")
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.fog_enabled = true
-	env.fog_light_color = Color("e8c9a8")
-	env.fog_density = 0.00028
+	env.fog_light_color = Color("8f7a63")
+	env.fog_density = 0.0006
 	env.fog_sky_affect = 0.3
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
 
 	var sun := DirectionalLight3D.new()
-	sun.light_color = Color("ffd9a8")
-	sun.light_energy = 1.05
-	sun.rotation = Vector3(deg_to_rad(-32), deg_to_rad(-140), 0)
+	sun.light_color = Color("ffc58a")
+	sun.light_energy = 0.95
+	sun.rotation = Vector3(deg_to_rad(-24), deg_to_rad(-140), 0)
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 700.0
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS

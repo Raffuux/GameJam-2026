@@ -59,6 +59,50 @@ static func noise(color_a: Color, color_b: Color, freq: float = 0.08, size: int 
 
 
 ## Matériau qui plaque la texture en coordonnées monde : les fenêtres gardent leur taille quel que soit l'immeuble.
+static var _grime: ImageTexture
+
+
+## Crasse : taches, coulures et petits points sombres, autour de 0,8 (multiplie la couleur de base).
+static func grime() -> ImageTexture:
+	if _grime:
+		return _grime
+	var s := 256
+	var big := FastNoiseLite.new()
+	big.seed = 11
+	big.frequency = 0.012
+	big.fractal_octaves = 4
+	var fine := FastNoiseLite.new()
+	fine.seed = 12
+	fine.frequency = 0.18
+	var a := big.get_seamless_image(s, s)
+	var f := fine.get_seamless_image(s, s)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 13
+	var img := Image.create(s, s, false, Image.FORMAT_RGBA8)
+	for y in s:
+		for x in s:
+			var v := 0.62 + a.get_pixel(x, y).r * 0.3 + f.get_pixel(x, y).r * 0.12
+			# coulures verticales
+			v -= maxf(0.0, sin(x * 0.21) * sin(x * 0.047 + 1.3)) * 0.06 * (y / float(s))
+			if rng.randf() < 0.012:
+				v -= 0.18
+			img.set_pixel(x, y, Color(v, v * 0.98, v * 0.94))
+	img.generate_mipmaps()
+	_grime = ImageTexture.create_from_image(img)
+	return _grime
+
+
+## Ajoute la crasse en détail (multiplication), plaquée en coordonnées monde.
+static func add_grime(m: StandardMaterial3D, scale: float = 1.0 / 45.0) -> void:
+	m.detail_enabled = true
+	m.detail_albedo = grime()
+	m.detail_blend_mode = BaseMaterial3D.BLEND_MODE_MUL
+	if not m.uv1_triplanar:
+		m.uv1_triplanar = true
+		m.uv1_world_triplanar = true
+		m.uv1_scale = Vector3.ONE * scale
+
+
 static func world_mat(tex: Texture2D, tint: Color, scale: float, rough: float = 0.85) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_texture = tex
@@ -68,4 +112,5 @@ static func world_mat(tex: Texture2D, tint: Color, scale: float, rough: float = 
 	m.uv1_world_triplanar = true
 	m.uv1_scale = Vector3.ONE * scale
 	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	add_grime(m)
 	return m

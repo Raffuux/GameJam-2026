@@ -3,6 +3,7 @@ extends RefCounted
 ## avec leurs collisions. Garde aussi la trace de ce qu'il faut dessiner sur la minimap.
 
 const Layout := preload("res://scripts/city/layout.gd")
+const Tex := preload("res://scripts/city/textures.gd")
 
 var root: Node3D
 var rng := RandomNumberGenerator.new()
@@ -31,6 +32,9 @@ func mat(color: Color, rough: float = 0.85, extra: Dictionary = {}) -> StandardM
 	m.roughness = rough
 	for k in extra:
 		m.set(k, extra[k])
+	# tout est un peu sale, sauf la soie, les néons et ce qui est transparent
+	if not extra.has("transparency") and not extra.has("emission_enabled") and color.a > 0.99:
+		Tex.add_grime(m)
 	_mats[key] = m
 	return m
 

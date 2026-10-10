@@ -45,6 +45,13 @@ la Décharge de la Nuée et la Grande Fourmilière. Ils apparaissent sur la cart
 Partout : lampadaires, bouches d'incendie, canettes, capsules, mégots, boulettes de papier, drapeaux et tags de gang.
 En fond : murs de briques de la ruelle, une épicerie au sud, et un skyline de gratte-ciel dans la brume dorée.
 
+## Ambiance
+
+Fin de journée sous un ciel lourd et une brume de pollution. Un post-traitement plein écran (`scripts/fx/film_look.gd`)
+ajoute du grain de film animé, un vignettage et des couleurs un peu désaturées. Toutes les surfaces reçoivent une
+texture de crasse en coordonnées monde (`Tex.grime()`). Les réglages (grain, vignettage, contraste, saturation, teinte)
+sont en haut du shader.
+
 ## Jouer
 
 - **ZQSD / WASD** bouger, **Maj** sprint, **Espace** sauter, **souris** caméra, **molette** zoom
