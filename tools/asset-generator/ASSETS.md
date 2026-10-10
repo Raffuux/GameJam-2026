@@ -10,14 +10,14 @@ Assets low-poly procéduraux en Three.js, style jardin vu à hauteur d'araignée
   Les options acceptent un `seed` pour varier les touffes, cailloux, etc. de façon reproductible.
 - **Animation** : les insectes exposent `object.userData.update(tempsSecondes, vitesse)`
   (vitesse 0 = à l'arrêt, 1 = marche). `updateAssets(scene, t)` les anime tous.
-- **Modèles .glb** : `npm run export:glb` régénère `public/models/<id>.glb`. Les insectes y ont leur
+- **Modèles .glb** : `npm run export:glb` régénère `assets/models/<id>.glb` à la racine du repo (donc `res://assets/models/` dans Godot). Les insectes y ont leur
   animation cuite en boucle (`walk`, ou `hover` pour l'abeille). Les drapeaux sont statiques dans le .glb.
 
 ## Utilisation dans Godot 4
 
 Le code Three.js sert d'outil de génération : le jeu utilise les .glb.
 
-1. Copier `public/models/*.glb` dans le projet Godot (par exemple `res://assets/models/`).
+1. Les .glb sont déjà dans `assets/models/`, que Godot voit comme `res://assets/models/`.
 2. Glisser un .glb dans une scène. 1 unité glTF = 1 cm réel, donc l'araignée fait environ 1 m dans Godot
    et la tour boîte de céréales environ 36 m. Les assets reposent sur le sol à l'origine et regardent vers +Z.
 3. Pour les insectes, l'`AnimationPlayer` importé contient l'animation `walk` (ou `hover`) : activer la
