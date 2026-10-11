@@ -280,6 +280,10 @@ const FONT = {
   O: [7, 5, 5, 5, 7], S: [7, 4, 7, 1, 7], U: [5, 5, 5, 5, 7], P: [7, 5, 7, 4, 4], H: [5, 5, 7, 5, 5],
   0: [7, 5, 5, 5, 7], 1: [2, 6, 2, 2, 7], 2: [7, 1, 7, 4, 7], 3: [7, 1, 7, 1, 7], 4: [5, 5, 7, 1, 1],
   5: [7, 4, 7, 1, 7], 6: [7, 4, 7, 5, 7], 7: [7, 1, 1, 1, 1], 8: [7, 5, 7, 5, 7], 9: [7, 5, 7, 1, 7],
+  C: [7, 4, 4, 4, 7], D: [6, 5, 5, 5, 6], E: [7, 4, 6, 4, 7], F: [7, 4, 6, 4, 4], J: [1, 1, 1, 5, 7],
+  K: [5, 5, 6, 5, 5], M: [5, 7, 5, 5, 5], N: [5, 7, 7, 7, 5], Q: [7, 5, 5, 7, 1], R: [6, 5, 6, 5, 5],
+  T: [7, 2, 2, 2, 2], V: [5, 5, 5, 5, 2], W: [5, 5, 7, 7, 5], X: [5, 5, 2, 5, 5], Y: [5, 5, 2, 2, 2],
+  Z: [7, 1, 2, 4, 7], '-': [0, 0, 7, 0, 0],
   '.': [0, 0, 0, 0, 2], ' ': [0, 0, 0, 0, 0],
 };
 
@@ -403,7 +407,9 @@ export function createGasStation() {
   const sw = 13;
   const sh = 5;
   const sd = 7;
-  group.add(box(sw, sh, sd, white, sx, sh / 2 + 0.3, sz));
+  const shopBody = roundedSlab(sw, sd, sh, 1.4, white, 0.3);
+  shopBody.position.set(sx, sh / 2 + 0.3, sz);
+  group.add(shopBody);
   const shopRoof = roundedSlab(sw + 0.4, sd + 0.4, 1.1, 1.6, red, 0.4);
   shopRoof.position.set(sx, sh + 0.55 + 0.3, sz);
   const shopDome = roundedSlab(sw - 0.4, sd - 0.4, 1.2, 1.4, red, 0.55);
@@ -484,6 +490,268 @@ export function createGasStation() {
   paper.position.set(2, 0.3, -2);
   group.add(bag, bag2, paper);
   return tag(group, 'gas_station', { category: 'city', heightCm: 16 });
+}
+
+// Shared bits for the rounded street buildings below.
+function neon(color, intensity = 2.2) {
+  return mat(color, { emissive: color, emissiveIntensity: intensity });
+}
+
+function placed(m, x, y, z, ry = 0) {
+  m.position.set(x, y, z);
+  m.rotation.y = ry;
+  return m;
+}
+
+// Concrete pad under a building, slightly bevelled.
+function pad(w, d, material) {
+  return placed(roundedSlab(w, d, 0.3, 1.2, material, 0.1), 0, 0.15, 0);
+}
+
+// Retro roadside diner, ~10 cm: a long capsule of chrome, glass and red, with a
+// neon sign on the roof and a little entrance porch. Opens on +Z.
+export function createDiner() {
+  const group = new THREE.Group();
+  const r = rng(51);
+  const concrete = mat(0x8f8b83, { roughness: 0.95 });
+  const chrome = mat(0xd5d8dc, { metalness: 0.85, roughness: 0.25 });
+  const red = mat(0xb3261e, { roughness: 0.5 });
+  const cream = mat(0xf1e8d2, { roughness: 0.6 });
+  const mint = mat(0x7fc8b4, { roughness: 0.55 });
+  const glass = mat(C.window, { roughness: 0.1, metalness: 0.35 });
+  const lit = neon(C.windowLit, 0.6);
+  const dark = mat(0x26272b, { roughness: 0.7 });
+  const W = 18;
+  const D = 7;
+  group.add(pad(W + 6, D + 7, concrete));
+  // Capsule body in horizontal bands: chrome skirt, window band, red stripe, cream top.
+  group.add(placed(roundedSlab(W, D, 1.8, D / 2, chrome, 0.3), 0, 1.2, 0));
+  group.add(placed(roundedSlab(W - 0.3, D - 0.3, 2.8, D / 2 - 0.15, glass, 0.1), 0, 3.5, 0));
+  group.add(placed(roundedSlab(W - 0.9, D - 0.9, 2.6, D / 2 - 0.45, lit, 0.1), 0, 3.5, 0));
+  group.add(placed(roundedSlab(W + 0.1, D + 0.1, 0.5, D / 2, red, 0.2), 0, 5.15, 0));
+  group.add(placed(roundedSlab(W, D, 1.2, D / 2, cream, 0.35), 0, 5.9, 0));
+  group.add(placed(roundedSlab(W + 0.6, D + 0.6, 0.5, D / 2 + 0.3, mint, 0.22), 0, 6.65, 0));
+  group.add(placed(roundedSlab(W - 1.5, D - 1.5, 0.9, D / 2 - 0.75, cream, 0.4), 0, 7.1, 0));
+  // Window mullions along the front and back.
+  for (let i = -6; i <= 6; i++) {
+    for (const side of [1, -1]) group.add(box(0.14, 2.8, 0.14, chrome, i * 1.15, 3.5, side * (D / 2 - 0.05)));
+  }
+  // Booth silhouettes behind the glass.
+  for (let i = -5; i <= 5; i += 2) group.add(box(0.5, 1.4, 1.6, red, i * 1.15, 2.7, D / 2 - 1.3));
+  // Entrance porch: a rounded red vestibule with a glass door.
+  const porch = roundedSlab(3.4, 2.4, 4.6, 0.9, red, 0.3);
+  group.add(placed(porch, 0, 2.6, D / 2 + 0.9));
+  group.add(placed(roundedSlab(3.9, 2.9, 0.4, 1.1, chrome, 0.15), 0, 5.05, D / 2 + 0.9));
+  group.add(box(1.8, 3.3, 0.1, glass, 0, 2, D / 2 + 2.12), box(0.12, 0.9, 0.12, chrome, 0.6, 2.2, D / 2 + 2.2));
+  group.add(box(2.6, 0.3, 1.2, concrete, 0, 0.45, D / 2 + 2.6));
+  // Roof sign on two posts: neon block letters on a rounded panel.
+  for (const x of [-3, 3]) group.add(box(0.25, 1.6, 0.25, chrome, x, 8.2, 0));
+  group.add(placed(roundedSlab(9, 0.5, 2.6, 0.25, dark, 0.2), 0, 9.9, 0));
+  for (const side of [1, -1]) {
+    const word = blockText('DINER', 0.36, neon(0xff3b4a), 0.1);
+    word.position.set(0, 9.9, side * 0.26);
+    if (side < 0) word.rotation.y = Math.PI;
+    group.add(word);
+  }
+  // EAT pole sign by the road, and an air vent and trash out back.
+  group.add(box(0.4, 9, 0.4, chrome, W / 2 + 1.5, 4.8, D / 2 + 2.5));
+  group.add(placed(roundedSlab(3.6, 0.5, 2.2, 0.9, red, 0.2), W / 2 + 1.5, 9.4, D / 2 + 2.5));
+  for (const side of [1, -1]) {
+    const eat = blockText('EAT', 0.34, neon(0xfff2c8), 0.1);
+    eat.position.set(W / 2 + 1.5, 9.4, D / 2 + 2.5 + side * 0.26);
+    if (side < 0) eat.rotation.y = Math.PI;
+    group.add(eat);
+  }
+  group.add(placed(roundedSlab(2, 2, 1, 0.6, chrome, 0.3), -5, 7.9, -1));
+  const dumpster = createDumpster();
+  group.add(placed(dumpster, -W / 2 - 1, 0.3, -D / 2 - 1.6, 0.2));
+  const bag = createTrashBag({ seed: 52 });
+  group.add(placed(bag, -W / 2 + 2.5, 0.3, -D / 2 - 2));
+  group.add(placed(createCrumpledPaper({ seed: 53 }), 4 + r(), 0.3, D / 2 + 4));
+  group.add(box(3, 0.6, 0.6, dark, -W / 2 - 1, 0.6, D / 2 + 2));
+  return tag(group, 'diner', { category: 'city', heightCm: 11 });
+}
+
+// Corner liquor store, ~8 cm: soft brick block with a rounded corner, striped
+// awning, barred windows and neon in the glass. Opens on +Z.
+export function createLiquorStore() {
+  const group = new THREE.Group();
+  const concrete = mat(0x8f8b83, { roughness: 0.95 });
+  const brick = mat(0xa5533a, { roughness: 0.85 });
+  const trim = mat(0xe3d9c2, { roughness: 0.6 });
+  const green = mat(0x2f6b3f, { roughness: 0.6 });
+  const steel = mat(PALETTE.metal, { metalness: 0.7, roughness: 0.35 });
+  const shutter = mat(0x7d8087, { metalness: 0.5, roughness: 0.5 });
+  const glass = mat(C.window, { roughness: 0.1, metalness: 0.35 });
+  const lit = neon(C.windowLit, 0.5);
+  const W = 14;
+  const D = 10;
+  const H = 6;
+  group.add(pad(W + 4, D + 4, concrete));
+  group.add(placed(roundedSlab(W, D, H, 3, brick, 0.35), 0, H / 2 + 0.3, 0));
+  // Parapet: a cream cornice and a rounded cap.
+  group.add(placed(roundedSlab(W + 0.5, D + 0.5, 0.6, 3.2, trim, 0.25), 0, H + 0.2, 0));
+  group.add(placed(roundedSlab(W - 0.8, D - 0.8, 0.8, 2.6, brick, 0.35), 0, H + 0.8, 0));
+  // Shop front: two lit windows behind bars and a door, under a rounded awning.
+  const fz = D / 2 + 0.03;
+  for (const x of [-4, 3.2]) {
+    group.add(box(4, 3, 0.1, glass, x, 2.5, fz), box(3.8, 2.8, 0.05, lit, x, 2.5, fz - 0.08));
+    for (let i = 0; i < 9; i++) group.add(box(0.1, 3, 0.1, steel, x - 1.8 + i * 0.45, 2.5, fz + 0.15));
+    group.add(box(4.2, 0.12, 0.12, steel, x, 1.05, fz + 0.15), box(4.2, 0.12, 0.12, steel, x, 3.95, fz + 0.15));
+  }
+  group.add(box(2, 3.8, 0.1, glass, -0.6, 2.2, fz), box(2.3, 0.2, 0.2, trim, -0.6, 4.2, fz + 0.05));
+  // Roll-down shutter half closed over the door.
+  for (let i = 0; i < 6; i++) group.add(box(2.2, 0.2, 0.08, shutter, -0.6, 4.05 - i * 0.22, fz + 0.12));
+  // Awning: a quarter cylinder in green and cream stripes.
+  for (let i = 0; i < 12; i++) {
+    const g = new THREE.CylinderGeometry(1.3, 1.3, 1.0, 10, 1, true, 0, Math.PI / 2);
+    g.rotateZ(Math.PI / 2);
+    const strip = mesh(g, i % 2 ? trim : green);
+    strip.position.set(-5.5 + i * 1.0, 4.4, fz);
+    group.add(strip);
+  }
+  // Neon signs: LIQUOR on a board over the cornice, 24 in the window.
+  group.add(placed(roundedSlab(9, 0.5, 2, 0.6, mat(0x26272b, { roughness: 0.7 }), 0.18), 0, H + 1.9, fz - 0.6));
+  const word = blockText('LIQUOR', 0.3, neon(0x5fd0ff), 0.1);
+  word.position.set(0, H + 1.9, fz - 0.33);
+  group.add(word);
+  const hours = blockText('24', 0.2, neon(0xff4fa3), 0.08);
+  hours.position.set(3.2, 2.9, fz + 0.06);
+  group.add(hours);
+  // Side wall: a GTA tag stripe, roof units, a crate stack and trash.
+  group.add(box(0.05, 1.2, 6, mat(0x5e2580, { roughness: 0.6 }), W / 2 + 0.02, 2, -0.5));
+  group.add(box(2.2, 1, 1.8, steel, -3, H + 1.6, -2), box(1.4, 0.8, 1.4, steel, 3, H + 1.5, -1.5));
+  for (let i = 0; i < 3; i++) group.add(box(1.4, 1, 1.4, mat(0xc49a6c), W / 2 + 1, 0.8 + i * 1.02, -3 + (i % 2) * 0.2));
+  group.add(placed(createTrashBag({ seed: 61 }), -W / 2 - 1, 0.3, 1.5));
+  group.add(placed(createCrumpledPaper({ seed: 62 }), 2.5, 0.3, D / 2 + 1.6));
+  return tag(group, 'liquor_store', { category: 'city', heightCm: 9 });
+}
+
+// Auto repair garage, ~9 cm: a corrugated half-round hangar with a roll-up door,
+// a rounded office on the side, tyres and drums. Opens on +Z.
+export function createGarage() {
+  const group = new THREE.Group();
+  const r = rng(71);
+  const concrete = mat(0x8f8b83, { roughness: 0.95 });
+  const tin = mat(0x9aa3a8, { metalness: 0.6, roughness: 0.45 });
+  const rust = mat(0x8a4b2a, { roughness: 0.8 });
+  const yellow = mat(0xf0b92a, { roughness: 0.5 });
+  const white = mat(0xe9e5da, { roughness: 0.6 });
+  const dark = mat(0x26272b, { roughness: 0.7 });
+  const steel = mat(PALETTE.metal, { metalness: 0.7, roughness: 0.35 });
+  const glass = mat(C.window, { roughness: 0.1, metalness: 0.35 });
+  const R = 6;
+  const L = 14;
+  group.add(pad(2 * R + 10, L + 6, concrete));
+  // Hangar: an extruded half disc, with ribs every metre and a rust streak.
+  const arch = new THREE.Shape();
+  arch.absarc(0, 0, R, 0, Math.PI, false);
+  arch.lineTo(R, 0);
+  const shell = new THREE.ExtrudeGeometry(arch, { depth: L, bevelEnabled: false, curveSegments: 24 });
+  shell.translate(0, 0, -L / 2);
+  group.add(placed(mesh(shell, tin), -2, 0.3, 0));
+  for (let i = 0; i <= L; i += 1.4) {
+    const rib = mesh(new THREE.TorusGeometry(R + 0.04, 0.07, 4, 24, Math.PI), i % 2.8 < 1 ? tin : steel, { cast: false });
+    group.add(placed(rib, -2, 0.3, -L / 2 + i));
+  }
+  const streak = mesh(new THREE.TorusGeometry(R + 0.06, 0.5, 3, 8, 0.5), rust, { cast: false });
+  streak.position.set(-2, 0.3, 2);
+  streak.rotation.z = 1.1;
+  group.add(streak);
+  // Front: roll-up door (half up), yellow frame, sign.
+  const fz = L / 2 + 0.05;
+  group.add(box(7.4, 0.4, 0.3, yellow, -2, 5.3, fz), box(0.4, 5.1, 0.3, yellow, -5.7, 2.85, fz), box(0.4, 5.1, 0.3, yellow, 1.7, 2.85, fz));
+  for (let i = 0; i < 6; i++) group.add(box(7, 0.38, 0.1, steel, -2, 5 - i * 0.4, fz));
+  group.add(box(7, 2.6, 0.05, dark, -2, 1.6, fz - 0.4));
+  const sign = blockText('GARAGE', 0.24, white, 0.1);
+  sign.position.set(-2, 6.4, fz);
+  group.add(placed(roundedSlab(6.4, 0.3, 1.8, 0.5, mat(0xb3261e, { roughness: 0.5 }), 0.12), -2, 6.4, fz - 0.15), sign);
+  // Rounded office on the right with a window and a door.
+  group.add(placed(roundedSlab(5, 6, 4.4, 1.5, white, 0.3), R + 0.5, 2.5, 3));
+  group.add(placed(roundedSlab(5.4, 6.4, 0.6, 1.7, yellow, 0.25), R + 0.5, 4.9, 3));
+  group.add(box(2.4, 1.6, 0.1, glass, R + 0.2, 2.8, 6.03), box(1.2, 3, 0.1, glass, R + 2.1, 1.8, 6.03));
+  // Tyre stacks, drums, a jack and an engine block outside.
+  const tyre = mat(0x1b1b1d, { roughness: 0.85 });
+  for (const [x, z, n] of [[3.5, 9, 4], [5, 10.2, 2], [-8.5, 5, 3]]) {
+    for (let i = 0; i < n; i++) {
+      const t = mesh(new THREE.TorusGeometry(0.7, 0.32, 6, 14), tyre);
+      t.rotation.x = Math.PI / 2;
+      group.add(placed(t, x + (r() - 0.5) * 0.25, 0.62 + i * 0.6, z));
+    }
+  }
+  const drumMats = [mat(0x2f5f8a, { roughness: 0.5 }), rust];
+  for (let i = 0; i < 3; i++) {
+    const drum = mesh(new THREE.CylinderGeometry(0.75, 0.75, 2.2, 12), drumMats[i % 2]);
+    group.add(placed(drum, -9 + (i % 2) * 1.5, 1.4, -4 + i * 1.6));
+  }
+  group.add(box(1.6, 0.4, 0.8, mat(0xb3261e), 0.5, 0.5, 9.5), box(0.15, 1.6, 0.15, steel, 0.9, 1.2, 9.5));
+  group.add(box(1.8, 1.2, 1.2, dark, -4.5, 0.9, 9.8), box(1.2, 0.5, 0.8, steel, -4.5, 1.7, 9.8));
+  group.add(placed(createTrashBag({ seed: 72 }), R + 3.5, 0.3, -2));
+  return tag(group, 'garage', { category: 'city', heightCm: 8 });
+}
+
+// Two-storey roadside motel, ~10 cm: a long block with rounded ends, an outdoor
+// walkway, a kidney pool and a tall neon sign. Opens on +Z.
+export function createMotel() {
+  const group = new THREE.Group();
+  const concrete = mat(0x8f8b83, { roughness: 0.95 });
+  const peach = mat(0xe9b58f, { roughness: 0.7 });
+  const teal = mat(0x2f8f8a, { roughness: 0.55 });
+  const white = mat(0xe9e5da, { roughness: 0.6 });
+  const steel = mat(PALETTE.metal, { metalness: 0.7, roughness: 0.35 });
+  const glass = mat(C.window, { roughness: 0.1, metalness: 0.35 });
+  const water = mat(0x3fb6d8, { roughness: 0.1, metalness: 0.1, emissive: 0x1d6f8a, emissiveIntensity: 0.3 });
+  const W = 24;
+  const D = 6;
+  const floor = 3.6;
+  group.add(pad(W + 8, D + 16, concrete));
+  const bz = -4;
+  group.add(placed(roundedSlab(W, D, floor * 2, 2.2, peach, 0.3), 0, floor + 0.3, bz));
+  group.add(placed(roundedSlab(W + 2, D + 3, 0.6, 2.8, teal, 0.25), 0, floor * 2 + 0.6, bz + 0.8));
+  group.add(placed(roundedSlab(W - 1, D - 1, 0.6, 2, white, 0.25), 0, floor * 2 + 1.1, bz));
+  // Upper walkway with a rail on posts, stairs at the end.
+  const fz = bz + D / 2;
+  group.add(box(W - 3, 0.3, 1.8, white, 0, floor + 0.3, fz + 0.9));
+  for (let x = -W / 2 + 2; x <= W / 2 - 2; x += 2.5) group.add(box(0.25, floor, 0.25, white, x, floor / 2 + 0.3, fz + 1.7));
+  group.add(box(W - 3, 0.12, 0.12, steel, 0, floor + 1.5, fz + 1.75));
+  for (let x = -W / 2 + 2; x <= W / 2 - 2; x += 0.6) group.add(box(0.06, 1.2, 0.06, steel, x, floor + 0.9, fz + 1.75));
+  for (let i = 0; i < 8; i++) group.add(box(0.55, 0.2, 1.6, white, (W - 3) / 2 + 0.3 + i * 0.5, floor + 0.2 - (i + 1) * 0.45, fz + 0.9));
+  group.add(segment([(W - 3) / 2, floor + 0.3, fz + 1.75], [(W - 3) / 2 + 4.3, 0.4, fz + 1.75], 0.08, steel));
+  // Doors and windows, numbered by colour: one teal door and a lit window per room.
+  for (let k = 0; k < 6; k++) {
+    const x = -W / 2 + 2.8 + k * 3.6;
+    for (const y of [0.3, floor + 0.45]) {
+      group.add(box(1.1, 2.4, 0.1, teal, x, y + 1.2, fz + 0.03));
+      const on = (k + (y > 1 ? 1 : 0)) % 3 === 0;
+      group.add(box(1.4, 1.1, 0.1, on ? neon(C.windowLit, 0.6) : glass, x + 1.4, y + 1.6, fz + 0.03));
+    }
+  }
+  // Kidney pool: two overlapping rounded basins with a white rim.
+  for (const [x, z, w, d] of [[-4, 7, 9, 5], [1, 8, 6, 4]]) {
+    group.add(placed(roundedSlab(w + 0.8, d + 0.8, 0.45, 2.2, white, 0.15), x, 0.4, z));
+    group.add(placed(roundedSlab(w, d, 0.1, 1.9, water, 0.04), x, 0.66, z));
+  }
+  group.add(box(0.1, 1.4, 0.1, steel, -8.3, 1.1, 6.5), box(0.1, 1.4, 0.1, steel, -8.3, 1.1, 7.3));
+  // Tall sign: a rounded panel with MOTEL and a VACANCY strip, on a pole.
+  const sx = W / 2 + 2.5;
+  const sz = 9;
+  group.add(box(0.5, 13, 0.5, steel, sx, 6.8, sz));
+  group.add(placed(roundedSlab(7, 0.6, 3.2, 1.2, teal, 0.25), sx, 12.6, sz));
+  group.add(placed(roundedSlab(6, 0.5, 1.2, 0.5, white, 0.2), sx, 10.2, sz));
+  for (const side of [1, -1]) {
+    const word = blockText('MOTEL', 0.3, neon(0xff4fa3), 0.1);
+    word.position.set(sx, 12.6, sz + side * 0.31);
+    const vac = blockText('VACANCY', 0.16, neon(0xff3b4a), 0.08);
+    vac.position.set(sx, 10.2, sz + side * 0.26);
+    if (side < 0) {
+      word.rotation.y = Math.PI;
+      vac.rotation.y = Math.PI;
+    }
+    group.add(word, vac);
+  }
+  group.add(placed(createDumpster(), -W / 2 - 2, 0.3, bz, Math.PI / 2));
+  group.add(placed(createCrumpledPaper({ seed: 81 }), 5, 0.3, 4));
+  return tag(group, 'motel', { category: 'city', heightCm: 14 });
 }
 
 // Street trash bin, ~3 cm: a green municipal bin at bug scale.
