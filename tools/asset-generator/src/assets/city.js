@@ -252,6 +252,28 @@ export function createBank() {
   return tag(group, 'bank', { category: 'city', heightCm: h + 4 });
 }
 
+// Slab with rounded corners in plan and bevelled (rounded) edges, centred, height along Y.
+function roundedSlab(w, d, h, r, material, bevel = 0.3) {
+  const b = Math.min(bevel, h / 2 - 0.01);
+  const hw = w / 2 - b;
+  const hd = d / 2 - b;
+  const rr = Math.max(0.05, Math.min(r - b, hw, hd));
+  const s = new THREE.Shape();
+  s.moveTo(-hw + rr, -hd);
+  s.lineTo(hw - rr, -hd);
+  s.quadraticCurveTo(hw, -hd, hw, -hd + rr);
+  s.lineTo(hw, hd - rr);
+  s.quadraticCurveTo(hw, hd, hw - rr, hd);
+  s.lineTo(-hw + rr, hd);
+  s.quadraticCurveTo(-hw, hd, -hw, hd - rr);
+  s.lineTo(-hw, -hd + rr);
+  s.quadraticCurveTo(-hw, -hd, -hw + rr, -hd);
+  const g = new THREE.ExtrudeGeometry(s, { depth: h - 2 * b, bevelEnabled: true, bevelThickness: b, bevelSize: b, bevelSegments: 5, curveSegments: 10 });
+  g.translate(0, 0, -(h - 2 * b) / 2);
+  g.rotateX(-Math.PI / 2);
+  return mesh(g, material);
+}
+
 // 3x5 block font for signs: each glyph is 5 rows of 3 bits, top row first.
 const FONT = {
   A: [7, 5, 7, 5, 5], B: [6, 5, 6, 5, 6], G: [7, 4, 5, 5, 7], I: [7, 2, 2, 2, 7], L: [4, 4, 4, 4, 7],
@@ -328,9 +350,15 @@ export function createGasStation() {
       group.add(pillar, box(0.9, 1.2, 0.9, red, x, 0.9, z));
     }
   }
-  group.add(box(cw, 0.4, cd, white, 0, ch + 0.2, cz));
-  group.add(box(cw + 0.3, 1.4, cd + 0.3, red, 0, ch + 1.1, cz));
-  group.add(box(cw + 0.35, 0.3, cd + 0.35, yellow, 0, ch + 0.5, cz));
+  // Rounded canopy: soft corners, bevelled fascia and a domed top.
+  const place = (m, y) => {
+    m.position.set(0, y, cz);
+    group.add(m);
+  };
+  place(roundedSlab(cw, cd, 0.4, 2.6, white, 0.15), ch + 0.2);
+  place(roundedSlab(cw + 0.3, cd + 0.3, 1.4, 2.8, red, 0.4), ch + 1.1);
+  place(roundedSlab(cw + 0.45, cd + 0.45, 0.3, 2.85, yellow, 0.12), ch + 0.5);
+  place(roundedSlab(cw - 0.4, cd - 0.4, 1.6, 2.6, red, 0.75), ch + 1.75);
   for (const x of [-5, 0, 5]) {
     for (const z of [cz - 2.5, cz + 2.5]) {
       const light = box(2.2, 0.08, 0.8, glow, x, ch - 0.02, z);
@@ -376,9 +404,13 @@ export function createGasStation() {
   const sh = 5;
   const sd = 7;
   group.add(box(sw, sh, sd, white, sx, sh / 2 + 0.3, sz));
-  group.add(box(sw + 0.2, 1.1, sd + 0.2, red, sx, sh + 0.55 + 0.3, sz));
+  const shopRoof = roundedSlab(sw + 0.4, sd + 0.4, 1.1, 1.6, red, 0.4);
+  shopRoof.position.set(sx, sh + 0.55 + 0.3, sz);
+  const shopDome = roundedSlab(sw - 0.4, sd - 0.4, 1.2, 1.4, red, 0.55);
+  shopDome.position.set(sx, sh + 1.2, sz);
+  group.add(shopRoof, shopDome);
   const shop = blockText('SHOP', 0.2, white);
-  shop.position.set(sx, sh + 0.85, sz + sd / 2 + 0.11);
+  shop.position.set(sx, sh + 0.85, sz + sd / 2 + 0.21);
   group.add(shop);
   for (let i = 0; i < 4; i++) {
     if (i === 1) continue;
@@ -389,7 +421,7 @@ export function createGasStation() {
   group.add(shopDoor, box(0.1, 3.6, 0.2, steel, sx - 2.5, 2.1, sz + sd / 2 + 0.06), box(0.1, 3.6, 0.2, steel, sx - 0.5, 2.1, sz + sd / 2 + 0.06));
   const lit = mat(C.windowLit, { emissive: C.windowLit, emissiveIntensity: 0.5 });
   group.add(box(sw - 0.6, 3.2, 0.02, lit, sx, 2.1, sz + sd / 2 - 0.05));
-  group.add(box(2.4, 1, 1.8, steel, sx + 3, sh + 1.6, sz - 1), box(1.6, 0.8, 1.6, steel, sx - 3, sh + 1.5, sz + 0.5));
+  group.add(box(2.4, 1, 1.8, steel, sx + 3, sh + 2.1, sz - 1), box(1.6, 0.8, 1.6, steel, sx - 3, sh + 2.0, sz + 0.5));
   // Ice chest and a stack of tyres by the door.
   group.add(box(2.2, 1.6, 1.2, mat(0x2f6ea8, { roughness: 0.5 }), sx + 4.5, 1.1, sz + sd / 2 + 0.8));
   const tyre = mat(0x1b1b1d, { roughness: 0.85 });
