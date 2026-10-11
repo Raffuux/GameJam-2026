@@ -16,6 +16,7 @@ de marcher.
 | girl | `jumping_spider_girl` | talons aiguilles rouges aux 8 pattes, yeux agrandis, longs cils recourbés |
 | old_white | `jumping_spider_old_white` | vieux sage aux poils blancs : patte de bois à la place de la 2e patte gauche, sourcils broussailleux, barbe en pointe, moustache, lunettes rondes |
 | old_hunched | `jumping_spider_old_hunched` | le même en poivre et sel, corps recroquevillé (tête baissée, abdomen voûté) et canne en bois |
+| old_badass | `jumping_spider_old_badass` | version badass épurée : poivre et sel, patte de bois, canne, sourcils froncés, cicatrice sur un œil crevé laiteux |
 
 Durag, bandana et casquette (à l'endroit et à l'envers) existent en 5 couleurs : `green`, `purple`, `red`, `blue`, `black`
 (planche `jumping_spider_couleurs.png`). Ajouter une couleur : une entrée dans `COLORS`.

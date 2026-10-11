@@ -13,6 +13,7 @@ animations and the procedural IK legs keep working:
   girl    red stilettos on all eight feet, bigger eyes and long curled lashes
   old_white    old sage: white fur, bushy eyebrows, long beard, glasses and a wooden leg
   old_hunched  same sage, salt-and-pepper fur, curled-up body and a walking cane
+  old_badass   stripped-down tough one: salt-and-pepper, cane, frown, a scar over a blind eye
 
 Everything follows the source style: smooth shapes, small pixel-art textures sampled
 with nearest filtering. Blender is Z-up and the spider faces +Y (Godot: -Z forward).
@@ -28,7 +29,7 @@ from mathutils.bvhtree import BVHTree
 
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[-2:]
 SRC, OUT = argv[0], argv[1]
-VARIANTS = argv[2:] or [f"{kind}_{c}" for kind in ("durag", "bandana", "cap", "capback") for c in ("green", "purple", "red", "blue", "black")] + ["joint", "skull", "girl", "old_white", "old_hunched"]
+VARIANTS = argv[2:] or [f"{kind}_{c}" for kind in ("durag", "bandana", "cap", "capback") for c in ("green", "purple", "red", "blue", "black")] + ["joint", "skull", "girl", "old_white", "old_hunched", "old_badass"]
 
 
 # --------------------------------------------------------------------------- helpers
@@ -652,9 +653,9 @@ def white_fur(r, g, b, rnd):
     return [v * 0.98, v * 0.97, v * 0.93]  # warm off-white
 
 
-def salt_pepper_fur(r, g, b, rnd):
+def salt_pepper_fur(r, g, b, rnd, speckle=0.18):
     lum = 0.3 * r + 0.59 * g + 0.11 * b
-    v = min(1.0, 0.3 + 0.75 * lum + (0.22 if rnd.random() < 0.18 else 0.0))
+    v = min(1.0, 0.3 + 0.75 * lum + (0.22 if rnd.random() < speckle else 0.0))
     return [v * 0.97, v * 0.96, v * 0.93]
 
 
@@ -686,7 +687,77 @@ def wooden_leg(rig, leg, wood, brass):
     finish(rod(foot - d * 0.07, foot + d * 0.005, 0.034, 0.024, verts=10), brass, rig, tar.name, "peg_foot")
 
 
-def hunch(body):
+def paint_surface(body, mat_index, fn, name):
+    """Copy the image of one material and repaint it texel by texel: fn(point, normal, rgb)
+    gets the model-space surface point under each texel and returns a new rgb or None."""
+    me = body.data
+    node = next(n for n in me.materials[mat_index].node_tree.nodes if n.type == "TEX_IMAGE")
+    W, H = node.image.size
+    px = list(node.image.pixels)
+    uv = me.uv_layers.active.data
+    for poly in me.polygons:
+        if poly.material_index != mat_index:
+            continue
+        loops = list(poly.loop_indices)
+        n = (body.matrix_world.to_3x3() @ poly.normal).normalized()
+        for k in range(1, len(loops) - 1):
+            tri = [loops[0], loops[k], loops[k + 1]]
+            uvs = [uv[l].uv * Vector((W, H)) for l in tri]
+            ps = [body.matrix_world @ me.vertices[me.loops[l].vertex_index].co for l in tri]
+            (ax, ay), (bx, by), (cx, cy) = uvs
+            den = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy)
+            if abs(den) < 1e-9:
+                continue
+            for y in range(max(0, int(min(ay, by, cy))), min(H, int(max(ay, by, cy)) + 1)):
+                for x in range(max(0, int(min(ax, bx, cx))), min(W, int(max(ax, bx, cx)) + 1)):
+                    qx, qy = x + 0.5, y + 0.5
+                    w0 = ((by - cy) * (qx - cx) + (cx - bx) * (qy - cy)) / den
+                    w1 = ((cy - ay) * (qx - cx) + (ax - cx) * (qy - cy)) / den
+                    if min(w0, w1, 1 - w0 - w1) < -0.02:
+                        continue
+                    i = (y * W + x) * 4
+                    col = fn(ps[0] * w0 + ps[1] * w1 + ps[2] * (1 - w0 - w1), n, px[i:i + 3])
+                    if col:
+                        px[i:i + 3] = col
+    img = bpy.data.images.new(name, W, H)
+    img.pixels = px
+    img.pack()
+    node.image = img
+
+
+def battle_scars(body, eye):
+    """One clean scar slashed down through an eye, and that eye gone milky."""
+    c, r, front = eye
+    cuts = [((c.x - 0.06, c.z + 0.17), (c.x + 0.07, c.z - 0.22))]
+
+    def dist(px_, pz, a, b):
+        ax, az = a
+        bx, bz = b
+        t = max(0.0, min(1.0, ((px_ - ax) * (bx - ax) + (pz - az) * (bz - az)) / ((bx - ax) ** 2 + (bz - az) ** 2)))
+        return math.hypot(px_ - ax - t * (bx - ax), pz - az - t * (bz - az)), t
+
+    def scar(p, n, rgb):
+        if p.y < 0.3 or n.y < 0.15:
+            return None
+        for a, b in cuts:
+            d, t = dist(p.x, p.z, a, b)
+            w = 0.013 * math.sin(math.pi * min(1.0, max(0.0, t))) + 0.003  # thin at both ends
+            if d < w:
+                return [0.42, 0.2, 0.2] if d < w * 0.5 else [0.7, 0.52, 0.5]
+        return None
+
+    def milky(p, n, rgb):
+        if p.y < 0.3:
+            return None
+        if math.hypot(p.x - c.x, p.z - c.z) > r * 1.05 or p.z < c.z - r * 1.2:
+            return scar(p, n, rgb)
+        return [0.4 * rgb[0] + 0.6 * 0.78, 0.4 * rgb[1] + 0.6 * 0.8, 0.4 * rgb[2] + 0.6 * 0.82]
+
+    paint_surface(body, 0, scar, "jumping_spider_atlas_scarred")
+    paint_surface(body, 1, milky, "jumping_spider_atlas_blind_eye")
+
+
+def hunch(body, k_all=1.0):
     """Curl the rest mesh: the head bows down and the abdomen tucks under. Only the
     shape changes, the bones stay where they are, so every animation still plays."""
     me = body.data
@@ -696,28 +767,31 @@ def hunch(body):
         # Abdomen: a hump at the waist that curls down to the spinnerets.
         if co.y < 0.0:
             k = min(1.0, -co.y / 0.25)
-            a = math.radians(-16) * k
+            a = math.radians(-16) * k * k_all
             rel = co - piv
             co.y, co.z = piv.y + rel.y * math.cos(a) - rel.z * math.sin(a), piv.z + rel.y * math.sin(a) + rel.z * math.cos(a)
             tail = max(0.0, (-co.y - 0.35) / 0.6)
-            co.z -= 0.3 * tail * tail
-            co.y += 0.12 * tail * tail
+            co.z -= 0.3 * tail * tail * k_all
+            co.y += 0.12 * tail * tail * k_all
         # Head: the front top of the carapace and the eyes sink and lean forward.
         elif co.z > 0.36 and co.y > 0.1:
             k = min(1.0, (co.y - 0.1) / 0.4) * min(1.0, (co.z - 0.36) / 0.2)
-            co.z -= 0.13 * k
-            co.y += 0.04 * k
+            co.z -= 0.13 * k * k_all
+            co.y += 0.04 * k * k_all
     me.update()
 
 
 def old(rig, body, style="white"):
-    white = style == "white"
+    white, badass = style == "white", style == "badass"
     hair = material("old_hair", hexes("b9b5ab", "d8d4ca", "efebe2", "fbf9f4"), rough=0.9, seed=41)
     wood = material("old_wood", hexes("3e2412", "5e3a1e", "7d522c", "9c6a3a"), rough=0.75, seed=42,
                     pattern=lambda u, v: 0.3 * math.sin(u * math.pi * 10 + 2 * math.sin(v * 9)), size=32)
     brass = material("old_brass", hexes("5c3f10", "92701f", "c9a041", "eccb74"), rough=0.35, metal=0.85, seed=43)
     if white:
         recolor_fur(body, white_fur)
+    elif badass:
+        recolor_fur(body, lambda r, g, b, rnd: salt_pepper_fur(r, g, b, rnd, speckle=0.07))
+        hunch(body, 0.45)  # a slight stoop only: still stands up to you
     else:
         recolor_fur(body, salt_pepper_fur)
         hunch(body)
@@ -725,53 +799,66 @@ def old(rig, body, style="white"):
     drop_leg(body, "leg_L2")
     wooden_leg(rig, "leg_L2", wood, brass)
     eyes = eye_centers(body)
-    # Bushy white eyebrows over the four front eyes, flicking out and drooping.
-    for c, r, front in eyes:
-        side = 1 if c.x > 0 else -1
-        big = abs(c.x) < 0.12
-        count = 6 if big else 4
-        for j in range(count):
-            t = j / (count - 1)
-            a = math.radians(115 - 70 * t) if side > 0 else math.radians(65 + 70 * t)
-            root = Vector((c.x + math.cos(a) * r * 0.9, front - 0.03, c.z + math.sin(a) * r * 1.05))
-            out = Vector((side * (0.4 + 1.1 * t), 0.8, 0.7 - 0.4 * t))
-            length = (0.11 if big else 0.08) * (0.8 + 0.6 * t) * (1.2 if white else 1.0)
-            hair_tuft(root, out, length, 0.022 if big else 0.016, hair, rig, "body",
-                      f"brow_{round(c.x, 2)}_{j}", droop=0.05 * t)
-    # Sage beard: thin locks converging into a pointed goatee over the chelicerae,
-    # under a drooping moustache.
-    beard_len = 0.42 if white else 0.26
-    rnd = random.Random(7)
-    zs = min(c.z - r for c, r, front in eyes) - 0.01
-    point = Vector((0, 0.74 if white else 0.7, zs - beard_len))
-    n = 26 if white else 18
-    for j in range(n):
-        t = j / (n - 1)
-        x = (t - 0.5) * 0.42
-        root = Vector((x, 0.61 - 0.3 * x * x + 0.03 * rnd.random(), zs - 0.03 * rnd.random()))
-        tip = point + Vector((rnd.uniform(-0.04, 0.04), rnd.uniform(-0.03, 0.03), rnd.uniform(0, 0.12) * (abs(x) * 4)))
-        hair_tuft(root, tip - root, (tip - root).length * rnd.uniform(0.8, 1.0), 0.022, hair, rig, "body",
-                  f"beard_{j}", droop=0.0)
-    for side in (-1, 1):
-        for j in range(3):
-            root = Vector((side * (0.03 + 0.03 * j), 0.64, zs + 0.02 - 0.015 * j))
-            hair_tuft(root, Vector((side, 0.45, -0.35 - 0.2 * j)), 0.15 - 0.02 * j, 0.03, hair, rig, "body",
-                      f"moustache_{side}_{j}", droop=0.07)
-    # Round wire-rim glasses on the two big eyes.
-    rims = [e for e in eyes if abs(e[0].x) < 0.12]
-    for c, r, front in rims:
-        rad = min(r * 1.05, abs(c.x) - 0.014)
-        ring = add("torus", major_radius=rad, minor_radius=0.012, major_segments=20, minor_segments=6,
-                   location=(c.x, front + 0.03, c.z), rotation=(math.pi / 2, 0, 0))
-        finish(ring, brass, rig, "body", f"glasses_rim_{'R' if c.x > 0 else 'L'}")
-    (cl, rl, fl), (cr, rr, fr) = sorted(rims, key=lambda e: e[0].x)
-    rl, rr = min(rl * 1.05, abs(cl.x) - 0.014), min(rr * 1.05, abs(cr.x) - 0.014)
-    finish(rod(Vector((cl.x + rl * 0.8, fl + 0.03, cl.z + rl * 0.6)), Vector((cr.x - rr * 0.8, fr + 0.03, cr.z + rr * 0.6)), 0.01, verts=6),
-           brass, rig, "body", "glasses_bridge")
-    for c, r, front in rims:
-        side = 1 if c.x > 0 else -1
-        hinge = Vector((c.x + side * min(r * 1.05, abs(c.x) - 0.014), front + 0.03, c.z))
-        finish(rod(hinge, Vector((side * 0.29, 0.3, c.z + 0.02)), 0.009, verts=6), brass, rig, "body", f"glasses_arm_{side}")
+    if badass:
+        # No beard or glasses: a stern frown, a scarred blind eye, the wooden leg and the cane.
+        battle_scars(body, max(eyes, key=lambda e: (abs(e[0].x) < 0.12, e[0].x)))
+        for c, r, front in eyes:
+            if abs(c.x) > 0.12:
+                continue
+            side = 1 if c.x > 0 else -1
+            for j in range(4):
+                t = j / 3
+                root = Vector((c.x + side * r * (1.1 - 1.2 * t), front - 0.02, c.z + r * (1.35 - 0.35 * t)))
+                hair_tuft(root, Vector((-side * 0.8, 0.9, -0.4)), 0.1 - 0.012 * j, 0.032, hair, rig, "body",
+                          f"brow_{side}_{j}", droop=0.0)
+    else:
+        # Bushy white eyebrows over the four front eyes, flicking out and drooping.
+        for c, r, front in eyes:
+            side = 1 if c.x > 0 else -1
+            big = abs(c.x) < 0.12
+            count = 6 if big else 4
+            for j in range(count):
+                t = j / (count - 1)
+                a = math.radians(115 - 70 * t) if side > 0 else math.radians(65 + 70 * t)
+                root = Vector((c.x + math.cos(a) * r * 0.9, front - 0.03, c.z + math.sin(a) * r * 1.05))
+                out = Vector((side * (0.4 + 1.1 * t), 0.8, 0.7 - 0.4 * t))
+                length = (0.11 if big else 0.08) * (0.8 + 0.6 * t) * (1.2 if white else 1.0)
+                hair_tuft(root, out, length, 0.022 if big else 0.016, hair, rig, "body",
+                          f"brow_{round(c.x, 2)}_{j}", droop=0.05 * t)
+        # Sage beard: thin locks converging into a pointed goatee over the chelicerae,
+        # under a drooping moustache.
+        beard_len = 0.42 if white else 0.26
+        rnd = random.Random(7)
+        zs = min(c.z - r for c, r, front in eyes) - 0.01
+        point = Vector((0, 0.74 if white else 0.7, zs - beard_len))
+        n = 26 if white else 18
+        for j in range(n):
+            t = j / (n - 1)
+            x = (t - 0.5) * 0.42
+            root = Vector((x, 0.61 - 0.3 * x * x + 0.03 * rnd.random(), zs - 0.03 * rnd.random()))
+            tip = point + Vector((rnd.uniform(-0.04, 0.04), rnd.uniform(-0.03, 0.03), rnd.uniform(0, 0.12) * (abs(x) * 4)))
+            hair_tuft(root, tip - root, (tip - root).length * rnd.uniform(0.8, 1.0), 0.022, hair, rig, "body",
+                      f"beard_{j}", droop=0.0)
+        for side in (-1, 1):
+            for j in range(3):
+                root = Vector((side * (0.03 + 0.03 * j), 0.64, zs + 0.02 - 0.015 * j))
+                hair_tuft(root, Vector((side, 0.45, -0.35 - 0.2 * j)), 0.15 - 0.02 * j, 0.03, hair, rig, "body",
+                          f"moustache_{side}_{j}", droop=0.07)
+        # Round wire-rim glasses on the two big eyes.
+        rims = [e for e in eyes if abs(e[0].x) < 0.12]
+        for c, r, front in rims:
+            rad = min(r * 1.05, abs(c.x) - 0.014)
+            ring = add("torus", major_radius=rad, minor_radius=0.012, major_segments=20, minor_segments=6,
+                       location=(c.x, front + 0.03, c.z), rotation=(math.pi / 2, 0, 0))
+            finish(ring, brass, rig, "body", f"glasses_rim_{'R' if c.x > 0 else 'L'}")
+        (cl, rl, fl), (cr, rr, fr) = sorted(rims, key=lambda e: e[0].x)
+        rl, rr = min(rl * 1.05, abs(cl.x) - 0.014), min(rr * 1.05, abs(cr.x) - 0.014)
+        finish(rod(Vector((cl.x + rl * 0.8, fl + 0.03, cl.z + rl * 0.6)), Vector((cr.x - rr * 0.8, fr + 0.03, cr.z + rr * 0.6)), 0.01, verts=6),
+               brass, rig, "body", "glasses_bridge")
+        for c, r, front in rims:
+            side = 1 if c.x > 0 else -1
+            hinge = Vector((c.x + side * min(r * 1.05, abs(c.x) - 0.014), front + 0.03, c.z))
+            finish(rod(hinge, Vector((side * 0.29, 0.3, c.z + 0.02)), 0.009, verts=6), brass, rig, "body", f"glasses_arm_{side}")
     if not white:
         # Walking cane in the first right leg, crook on top.
         tar = rig.data.bones["leg_R1_tarsus"]
