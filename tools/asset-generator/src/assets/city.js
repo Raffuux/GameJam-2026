@@ -252,6 +252,208 @@ export function createBank() {
   return tag(group, 'bank', { category: 'city', heightCm: h + 4 });
 }
 
+// 3x5 block font for signs: each glyph is 5 rows of 3 bits, top row first.
+const FONT = {
+  A: [7, 5, 7, 5, 5], B: [6, 5, 6, 5, 6], G: [7, 4, 5, 5, 7], I: [7, 2, 2, 2, 7], L: [4, 4, 4, 4, 7],
+  O: [7, 5, 5, 5, 7], S: [7, 4, 7, 1, 7], U: [5, 5, 5, 5, 7], P: [7, 5, 7, 4, 4], H: [5, 5, 7, 5, 5],
+  0: [7, 5, 5, 5, 7], 1: [2, 6, 2, 2, 7], 2: [7, 1, 7, 4, 7], 3: [7, 1, 7, 1, 7], 4: [5, 5, 7, 1, 1],
+  5: [7, 4, 7, 1, 7], 6: [7, 4, 7, 5, 7], 7: [7, 1, 1, 1, 1], 8: [7, 5, 7, 5, 7], 9: [7, 5, 7, 1, 7],
+  '.': [0, 0, 0, 0, 2], ' ': [0, 0, 0, 0, 0],
+};
+
+// Block letters in the XY plane facing +Z, centred, `cell` units per pixel.
+function blockText(text, cell, material, depth = 0.15) {
+  const g = new THREE.Group();
+  const chars = [...text];
+  const width = chars.length * 4 - 1;
+  chars.forEach((ch, i) => {
+    const rows = FONT[ch] ?? FONT[' '];
+    rows.forEach((bits, row) => {
+      for (let col = 0; col < 3; col++) {
+        if (!(bits & (4 >> col))) continue;
+        const px = box(cell * 0.92, cell * 0.92, depth, material);
+        px.position.set((i * 4 + col - width / 2 + 0.5) * cell, (2 - row) * cell, depth / 2);
+        px.castShadow = false;
+        g.add(px);
+      }
+    });
+  });
+  return g;
+}
+
+// Gas station, ~14 cm: a canopy over two pump islands, a little shop and a price
+// pylon, on a stained concrete apron. Opens on +Z (the road side).
+export function createGasStation() {
+  const group = new THREE.Group();
+  const r = rng(41);
+  const concrete = mat(0x8f8b83, { roughness: 0.95 });
+  const concreteDark = mat(0x77736b, { roughness: 0.95 });
+  const red = mat(0xb3261e, { roughness: 0.55 });
+  const white = mat(0xe9e5da, { roughness: 0.6 });
+  const yellow = mat(0xf0b92a, { roughness: 0.5 });
+  const steel = mat(PALETTE.metal, { metalness: 0.7, roughness: 0.35 });
+  const dark = mat(0x26272b, { roughness: 0.7 });
+  const glass = mat(C.window, { roughness: 0.15, metalness: 0.3 });
+  const glow = mat(0xfff2c8, { emissive: 0xfff2c8, emissiveIntensity: 1.4 });
+  const led = mat(0xff9a2a, { emissive: 0xff9a2a, emissiveIntensity: 2 });
+  const screen = mat(0x6fe3a0, { emissive: 0x6fe3a0, emissiveIntensity: 1.2 });
+
+  // Concrete apron in slabs, with oil stains.
+  const W = 30;
+  const D = 24;
+  const slab = 6;
+  for (let x = 0; x < W / slab; x++) {
+    for (let z = 0; z < D / slab; z++) {
+      group.add(box(slab - 0.1, 0.3, slab - 0.1, (x + z) % 2 ? concrete : concreteDark, -W / 2 + (x + 0.5) * slab, 0.15, -D / 2 + (z + 0.5) * slab));
+    }
+  }
+  group.add(box(W + 0.3, 0.26, D + 0.3, dark, 0, 0.13, 0));
+  const oil = mat(0x121214, { roughness: 0.6 });
+  for (let i = 0; i < 6; i++) {
+    const stain = mesh(new THREE.CircleGeometry(0.6 + r() * 1.2, 10), oil, { cast: false });
+    stain.rotation.x = -Math.PI / 2;
+    stain.scale.set(1, 0.6 + r() * 0.6, 1);
+    stain.position.set(-8 + r() * 16, 0.31 + i * 0.002, -1 + r() * 9);
+    group.add(stain);
+  }
+
+  // Canopy on four pillars, red fascia with the brand in block letters, lights underneath.
+  const cz = 4;
+  const ch = 8;
+  const cw = 18;
+  const cd = 10;
+  for (const x of [-cw / 2 + 2, cw / 2 - 2]) {
+    for (const z of [cz - cd / 2 + 2, cz + cd / 2 - 2]) {
+      const pillar = box(0.8, ch, 0.8, white, x, ch / 2, z);
+      group.add(pillar, box(0.9, 1.2, 0.9, red, x, 0.9, z));
+    }
+  }
+  group.add(box(cw, 0.4, cd, white, 0, ch + 0.2, cz));
+  group.add(box(cw + 0.3, 1.4, cd + 0.3, red, 0, ch + 1.1, cz));
+  group.add(box(cw + 0.35, 0.3, cd + 0.35, yellow, 0, ch + 0.5, cz));
+  for (const x of [-5, 0, 5]) {
+    for (const z of [cz - 2.5, cz + 2.5]) {
+      const light = box(2.2, 0.08, 0.8, glow, x, ch - 0.02, z);
+      light.castShadow = false;
+      group.add(light);
+    }
+  }
+  const brand = blockText('BUG OIL', 0.24, white);
+  brand.position.set(0, ch + 1.1, cz + cd / 2 + 0.16);
+  group.add(brand);
+  const brandBack = blockText('BUG OIL', 0.24, white);
+  brandBack.rotation.y = Math.PI;
+  brandBack.position.set(0, ch + 1.1, cz - cd / 2 - 0.16);
+  group.add(brandBack);
+
+  // Two pump islands, two pumps each, hoses hooked on the side.
+  for (const x of [-4, 4]) {
+    group.add(box(1.8, 0.4, 7, yellow, x, 0.5, cz));
+    group.add(box(1.5, 0.42, 6.7, concrete, x, 0.52, cz));
+    for (const z of [cz - 1.8, cz + 1.8]) {
+      const pump = new THREE.Group();
+      pump.position.set(x, 0.7, z);
+      pump.add(box(1.1, 3.2, 0.8, red, 0, 1.6, 0));
+      pump.add(box(1.15, 0.5, 0.85, white, 0, 3.3, 0));
+      pump.add(box(1.15, 0.25, 0.85, dark, 0, 0.12, 0));
+      for (const side of [1, -1]) {
+        const display = box(0.7, 0.45, 0.04, screen, 0, 2.5, side * 0.42);
+        display.castShadow = false;
+        pump.add(display);
+        pump.add(box(0.5, 0.35, 0.05, dark, 0, 1.8, side * 0.42));
+      }
+      // Nozzle in its holster and a hose looping down.
+      pump.add(box(0.15, 0.5, 0.3, dark, 0.62, 2.0, 0));
+      pump.add(tube([[0.6, 1.8, 0], [0.9, 1.0, 0.15], [0.75, 0.3, 0.3], [0.62, 1.6, 0.05]], 0.07, dark, 12, 5));
+      group.add(pump);
+    }
+  }
+
+  // Shop at the back: glass front, door, sign band, roof units.
+  const sx = -4;
+  const sz = -7.5;
+  const sw = 13;
+  const sh = 5;
+  const sd = 7;
+  group.add(box(sw, sh, sd, white, sx, sh / 2 + 0.3, sz));
+  group.add(box(sw + 0.2, 1.1, sd + 0.2, red, sx, sh + 0.55 + 0.3, sz));
+  const shop = blockText('SHOP', 0.2, white);
+  shop.position.set(sx, sh + 0.85, sz + sd / 2 + 0.11);
+  group.add(shop);
+  for (let i = 0; i < 4; i++) {
+    if (i === 1) continue;
+    const pane = box(2.6, 3, 0.1, glass, sx - 4.5 + i * 3, 2.1, sz + sd / 2 + 0.03);
+    group.add(pane, box(2.7, 0.15, 0.15, steel, sx - 4.5 + i * 3, 3.65, sz + sd / 2 + 0.05));
+  }
+  const shopDoor = box(2, 3.6, 0.12, glass, sx - 1.5, 2.1, sz + sd / 2 + 0.04);
+  group.add(shopDoor, box(0.1, 3.6, 0.2, steel, sx - 2.5, 2.1, sz + sd / 2 + 0.06), box(0.1, 3.6, 0.2, steel, sx - 0.5, 2.1, sz + sd / 2 + 0.06));
+  const lit = mat(C.windowLit, { emissive: C.windowLit, emissiveIntensity: 0.5 });
+  group.add(box(sw - 0.6, 3.2, 0.02, lit, sx, 2.1, sz + sd / 2 - 0.05));
+  group.add(box(2.4, 1, 1.8, steel, sx + 3, sh + 1.6, sz - 1), box(1.6, 0.8, 1.6, steel, sx - 3, sh + 1.5, sz + 0.5));
+  // Ice chest and a stack of tyres by the door.
+  group.add(box(2.2, 1.6, 1.2, mat(0x2f6ea8, { roughness: 0.5 }), sx + 4.5, 1.1, sz + sd / 2 + 0.8));
+  const tyre = mat(0x1b1b1d, { roughness: 0.85 });
+  for (let i = 0; i < 3; i++) {
+    const t = mesh(new THREE.TorusGeometry(0.7, 0.32, 6, 14), tyre);
+    t.rotation.x = Math.PI / 2;
+    t.position.set(sx + 7.5 + (r() - 0.5) * 0.2, 0.62 + i * 0.6, sz + 2.5);
+    group.add(t);
+  }
+
+  // Oil drums and an air pump on the side.
+  const drumMats = [mat(0x2f5f8a, { roughness: 0.5 }), red, mat(0x3d6b3a, { roughness: 0.5 })];
+  for (let i = 0; i < 3; i++) {
+    const drum = mesh(new THREE.CylinderGeometry(0.75, 0.75, 2.2, 12), drumMats[i]);
+    drum.position.set(6.5 + (i % 2) * 1.6, 1.4, -9 + i * 1.1);
+    group.add(drum);
+    for (const y of [0.6, 1.6]) {
+      const ring = mesh(new THREE.TorusGeometry(0.76, 0.05, 4, 14), steel, { cast: false });
+      ring.rotation.x = Math.PI / 2;
+      ring.position.set(drum.position.x, y + 0.3, drum.position.z);
+      group.add(ring);
+    }
+  }
+  const tipped = mesh(new THREE.CylinderGeometry(0.75, 0.75, 2.2, 12), drumMats[0]);
+  tipped.rotation.z = Math.PI / 2;
+  tipped.rotation.y = 0.5;
+  tipped.position.set(10, 1.05, -6);
+  group.add(tipped);
+  group.add(box(0.9, 2.6, 0.7, yellow, 11, 1.6, -1), box(0.95, 0.6, 0.75, dark, 11, 2.6, -1));
+  group.add(tube([[11.45, 2.2, -1], [11.9, 1.2, -0.6], [11.6, 0.5, -0.2], [11.3, 1.6, -0.7]], 0.06, dark, 10, 5));
+
+  // Price pylon at the corner: brand on top, three LED prices.
+  const px = 12.5;
+  const pz = 10;
+  group.add(box(0.7, 15, 0.7, steel, px, 7.8, pz));
+  group.add(box(5, 8, 0.6, red, px, 11, pz));
+  group.add(box(5.2, 0.3, 0.7, yellow, px, 15.1, pz), box(5.2, 0.3, 0.7, yellow, px, 6.9, pz));
+  for (const side of [1, -1]) {
+    const face = new THREE.Group();
+    face.position.set(px, 0, pz + side * 0.31);
+    if (side < 0) face.rotation.y = Math.PI;
+    const top = blockText('BUG', 0.36, white);
+    top.position.y = 13.6;
+    face.add(top);
+    ['2.49', '2.79', '3.09'].forEach((price, i) => {
+      face.add(box(4.2, 1.5, 0.06, dark, 0, 11.6 - i * 1.75, 0.03));
+      const digits = blockText(price, 0.2, led, 0.08);
+      digits.position.set(0, 11.6 - i * 1.75, 0.05);
+      face.add(digits);
+    });
+    group.add(face);
+  }
+  // Trash piling up by the shop.
+  const bag = createTrashBag({ seed: 43 });
+  bag.position.set(sx - sw / 2 - 1.2, 0.3, sz + 2);
+  const bag2 = createTrashBag({ seed: 44 });
+  bag2.position.set(sx - sw / 2 - 1.5, 0.3, sz - 0.5);
+  bag2.rotation.y = 1.2;
+  const paper = createCrumpledPaper({ seed: 45 });
+  paper.position.set(2, 0.3, -2);
+  group.add(bag, bag2, paper);
+  return tag(group, 'gas_station', { category: 'city', heightCm: 16 });
+}
+
 // Street trash bin, ~3 cm: a green municipal bin at bug scale.
 export function createTrashBin() {
   const group = new THREE.Group();

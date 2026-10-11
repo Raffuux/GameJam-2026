@@ -53,6 +53,7 @@ export const CATALOG = [
   { id: 'building_tower', label: 'Tour boîte de céréales', category: 'city', create: city.createTowerBuilding },
   { id: 'building_box', label: 'Immeuble carton', category: 'city', create: city.createBoxBuilding },
   { id: 'building_carton', label: 'Immeuble brique de lait', category: 'city', create: city.createCartonBuilding },
+  { id: 'gas_station', label: 'Station essence', category: 'city', create: city.createGasStation },
   { id: 'fire_hydrant', label: "Bouche d'incendie", category: 'city', create: city.createFireHydrant },
   { id: 'street_lamp', label: 'Lampadaire allumette', category: 'city', create: city.createStreetLamp },
   { id: 'trash_bin', label: 'Poubelle', category: 'city', create: city.createTrashBin },
