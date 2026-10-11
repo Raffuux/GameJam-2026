@@ -11,6 +11,8 @@ animations and the procedural IK legs keep working:
   joint   big fat cone joint held in the chelicerae, glowing end and smoke
   skull   realistic black-and-grey skull tattoos painted into the pixel-art atlas
   girl    red stilettos on all eight feet, bigger eyes and long curled lashes
+  old_white    old sage: white fur, bushy eyebrows, long beard, glasses and a wooden leg
+  old_hunched  same sage, salt-and-pepper fur, curled-up body and a walking cane
 
 Everything follows the source style: smooth shapes, small pixel-art textures sampled
 with nearest filtering. Blender is Z-up and the spider faces +Y (Godot: -Z forward).
@@ -26,7 +28,7 @@ from mathutils.bvhtree import BVHTree
 
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[-2:]
 SRC, OUT = argv[0], argv[1]
-VARIANTS = argv[2:] or [f"{kind}_{c}" for kind in ("durag", "bandana", "cap", "capback") for c in ("green", "purple", "red", "blue", "black")] + ["joint", "skull", "girl"]
+VARIANTS = argv[2:] or [f"{kind}_{c}" for kind in ("durag", "bandana", "cap", "capback") for c in ("green", "purple", "red", "blue", "black")] + ["joint", "skull", "girl", "old_white", "old_hunched"]
 
 
 # --------------------------------------------------------------------------- helpers
@@ -611,7 +613,183 @@ def cap(rig, body, color="green", back=False):
     finish(logo, white, rig, "body", "cap_logo")
 
 
-BUILDERS = {"durag": durag, "bandana": bandana, "cap": cap, "capback": lambda r, b, c: cap(r, b, c, back=True), "joint": joint, "skull": skull, "girl": girl}
+
+# --------------------------------------------------------------------------- old sage
+def hair_tuft(root, direction, length, radius, mat, rig, bone, name, droop=0.0):
+    """One tapered hair lock: a bent cone from root along direction, drooping at the tip."""
+    d = Vector(direction).normalized()
+    mid = root + d * length * 0.55
+    tip = root + d * length + Vector((0, 0, -droop))
+    a = rod(root, mid, radius, radius * 0.7, verts=6)
+    b = rod(mid, tip, radius * 0.7, radius * 0.08, verts=6)
+    bpy.ops.object.select_all(action="DESELECT")
+    a.select_set(True)
+    b.select_set(True)
+    bpy.context.view_layer.objects.active = a
+    bpy.ops.object.join()
+    return finish(a, mat, rig, bone, name)
+
+
+def recolor_fur(body, fn, seed=5):
+    """Copy the atlas for the fur material only (the eyes keep theirs) and remap each pixel."""
+    me = body.data
+    node = next(n for n in me.materials[0].node_tree.nodes if n.type == "TEX_IMAGE")
+    src = node.image
+    W, H = src.size
+    px = list(src.pixels)
+    rnd = random.Random(seed)
+    for i in range(0, len(px), 4):
+        px[i:i + 3] = fn(px[i], px[i + 1], px[i + 2], rnd)
+    img = bpy.data.images.new("jumping_spider_atlas_old", W, H)
+    img.pixels = px
+    img.pack()
+    node.image = img
+
+
+def white_fur(r, g, b, rnd):
+    lum = 0.3 * r + 0.59 * g + 0.11 * b
+    v = min(1.0, 0.6 + 1.0 * lum)
+    return [v * 0.98, v * 0.97, v * 0.93]  # warm off-white
+
+
+def salt_pepper_fur(r, g, b, rnd):
+    lum = 0.3 * r + 0.59 * g + 0.11 * b
+    v = min(1.0, 0.3 + 0.75 * lum + (0.22 if rnd.random() < 0.18 else 0.0))
+    return [v * 0.97, v * 0.96, v * 0.93]
+
+
+def drop_leg(body, leg):
+    """Remove the tibia and tarsus of one leg from the mesh: only a femur stub is left."""
+    names = {g.index: g.name for g in body.vertex_groups}
+    gone = {f"{leg}_tibia", f"{leg}_tarsus", f"{leg}_tip"}
+    bm = bmesh.new()
+    bm.from_mesh(body.data)
+    dl = bm.verts.layers.deform.active
+    kill = [v for v in bm.verts if v[dl] and names[max(v[dl].items(), key=lambda kv: kv[1])[0]] in gone]
+    bmesh.ops.delete(bm, geom=kill, context="VERTS")
+    bm.to_mesh(body.data)
+    bm.free()
+    body.data.update()
+
+
+def wooden_leg(rig, leg, wood, brass):
+    """A turned-wood leg in two pieces (tibia and tarsus) so the IK keeps bending it,
+    with brass rings at the joints and a brass ferrule on the foot."""
+    tib, tar = rig.data.bones[f"{leg}_tibia"], rig.data.bones[f"{leg}_tarsus"]
+    knee, ankle, foot = (rig.matrix_world @ p for p in (tib.head_local, tib.tail_local, tar.tail_local))
+    finish(rod(knee, ankle, 0.05, 0.042, verts=10), wood, rig, tib.name, "peg_upper")
+    finish(rod(ankle, foot + (ankle - foot).normalized() * 0.03, 0.04, 0.028, verts=10), wood, rig, tar.name, "peg_lower")
+    for p, nxt, bone, r, n in ((knee, ankle, tib.name, 0.066, "peg_cuff"), (ankle, foot, tar.name, 0.052, "peg_joint")):
+        d = (nxt - p).normalized()
+        finish(rod(p - d * 0.03, p + d * 0.035, r, r, verts=12), brass, rig, bone, n)
+    d = (foot - ankle).normalized()
+    finish(rod(foot - d * 0.07, foot + d * 0.005, 0.034, 0.024, verts=10), brass, rig, tar.name, "peg_foot")
+
+
+def hunch(body):
+    """Curl the rest mesh: the head bows down and the abdomen tucks under. Only the
+    shape changes, the bones stay where they are, so every animation still plays."""
+    me = body.data
+    piv = Vector((0, -0.05, 0.3))
+    for v in me.vertices:
+        co = v.co
+        # Abdomen: a hump at the waist that curls down to the spinnerets.
+        if co.y < 0.0:
+            k = min(1.0, -co.y / 0.25)
+            a = math.radians(-16) * k
+            rel = co - piv
+            co.y, co.z = piv.y + rel.y * math.cos(a) - rel.z * math.sin(a), piv.z + rel.y * math.sin(a) + rel.z * math.cos(a)
+            tail = max(0.0, (-co.y - 0.35) / 0.6)
+            co.z -= 0.3 * tail * tail
+            co.y += 0.12 * tail * tail
+        # Head: the front top of the carapace and the eyes sink and lean forward.
+        elif co.z > 0.36 and co.y > 0.1:
+            k = min(1.0, (co.y - 0.1) / 0.4) * min(1.0, (co.z - 0.36) / 0.2)
+            co.z -= 0.13 * k
+            co.y += 0.04 * k
+    me.update()
+
+
+def old(rig, body, style="white"):
+    white = style == "white"
+    hair = material("old_hair", hexes("b9b5ab", "d8d4ca", "efebe2", "fbf9f4"), rough=0.9, seed=41)
+    wood = material("old_wood", hexes("3e2412", "5e3a1e", "7d522c", "9c6a3a"), rough=0.75, seed=42,
+                    pattern=lambda u, v: 0.3 * math.sin(u * math.pi * 10 + 2 * math.sin(v * 9)), size=32)
+    brass = material("old_brass", hexes("5c3f10", "92701f", "c9a041", "eccb74"), rough=0.35, metal=0.85, seed=43)
+    if white:
+        recolor_fur(body, white_fur)
+    else:
+        recolor_fur(body, salt_pepper_fur)
+        hunch(body)
+    # The second left leg is gone below the femur: a wooden one takes its place.
+    drop_leg(body, "leg_L2")
+    wooden_leg(rig, "leg_L2", wood, brass)
+    eyes = eye_centers(body)
+    # Bushy white eyebrows over the four front eyes, flicking out and drooping.
+    for c, r, front in eyes:
+        side = 1 if c.x > 0 else -1
+        big = abs(c.x) < 0.12
+        count = 6 if big else 4
+        for j in range(count):
+            t = j / (count - 1)
+            a = math.radians(115 - 70 * t) if side > 0 else math.radians(65 + 70 * t)
+            root = Vector((c.x + math.cos(a) * r * 0.9, front - 0.03, c.z + math.sin(a) * r * 1.05))
+            out = Vector((side * (0.4 + 1.1 * t), 0.8, 0.7 - 0.4 * t))
+            length = (0.11 if big else 0.08) * (0.8 + 0.6 * t) * (1.2 if white else 1.0)
+            hair_tuft(root, out, length, 0.022 if big else 0.016, hair, rig, "body",
+                      f"brow_{round(c.x, 2)}_{j}", droop=0.05 * t)
+    # Sage beard: thin locks converging into a pointed goatee over the chelicerae,
+    # under a drooping moustache.
+    beard_len = 0.42 if white else 0.26
+    rnd = random.Random(7)
+    zs = min(c.z - r for c, r, front in eyes) - 0.01
+    point = Vector((0, 0.74 if white else 0.7, zs - beard_len))
+    n = 26 if white else 18
+    for j in range(n):
+        t = j / (n - 1)
+        x = (t - 0.5) * 0.42
+        root = Vector((x, 0.61 - 0.3 * x * x + 0.03 * rnd.random(), zs - 0.03 * rnd.random()))
+        tip = point + Vector((rnd.uniform(-0.04, 0.04), rnd.uniform(-0.03, 0.03), rnd.uniform(0, 0.12) * (abs(x) * 4)))
+        hair_tuft(root, tip - root, (tip - root).length * rnd.uniform(0.8, 1.0), 0.022, hair, rig, "body",
+                  f"beard_{j}", droop=0.0)
+    for side in (-1, 1):
+        for j in range(3):
+            root = Vector((side * (0.03 + 0.03 * j), 0.64, zs + 0.02 - 0.015 * j))
+            hair_tuft(root, Vector((side, 0.45, -0.35 - 0.2 * j)), 0.15 - 0.02 * j, 0.03, hair, rig, "body",
+                      f"moustache_{side}_{j}", droop=0.07)
+    # Round wire-rim glasses on the two big eyes.
+    rims = [e for e in eyes if abs(e[0].x) < 0.12]
+    for c, r, front in rims:
+        rad = min(r * 1.05, abs(c.x) - 0.014)
+        ring = add("torus", major_radius=rad, minor_radius=0.012, major_segments=20, minor_segments=6,
+                   location=(c.x, front + 0.03, c.z), rotation=(math.pi / 2, 0, 0))
+        finish(ring, brass, rig, "body", f"glasses_rim_{'R' if c.x > 0 else 'L'}")
+    (cl, rl, fl), (cr, rr, fr) = sorted(rims, key=lambda e: e[0].x)
+    rl, rr = min(rl * 1.05, abs(cl.x) - 0.014), min(rr * 1.05, abs(cr.x) - 0.014)
+    finish(rod(Vector((cl.x + rl * 0.8, fl + 0.03, cl.z + rl * 0.6)), Vector((cr.x - rr * 0.8, fr + 0.03, cr.z + rr * 0.6)), 0.01, verts=6),
+           brass, rig, "body", "glasses_bridge")
+    for c, r, front in rims:
+        side = 1 if c.x > 0 else -1
+        hinge = Vector((c.x + side * min(r * 1.05, abs(c.x) - 0.014), front + 0.03, c.z))
+        finish(rod(hinge, Vector((side * 0.29, 0.3, c.z + 0.02)), 0.009, verts=6), brass, rig, "body", f"glasses_arm_{side}")
+    if not white:
+        # Walking cane in the first right leg, crook on top.
+        tar = rig.data.bones["leg_R1_tarsus"]
+        ankle, foot = rig.matrix_world @ tar.head_local, rig.matrix_world @ tar.tail_local
+        grip = ankle * 0.45 + foot * 0.55
+        base = Vector((grip.x + 0.06, grip.y + 0.12, 0.0))
+        top = Vector((grip.x + 0.02, grip.y + 0.05, grip.z + 0.32))
+        finish(rod(base, top, 0.026, 0.026, verts=10), wood, rig, tar.name, "cane_shaft")
+        prev = top
+        for k in range(1, 9):
+            a = math.pi * k / 8
+            p = top + Vector((0, -0.09 * (1 - math.cos(a)), 0.09 * math.sin(a)))
+            finish(rod(prev, p, 0.026, 0.026, verts=10), wood, rig, tar.name, f"cane_crook_{k}")
+            prev = p
+        finish(rod(base, base + Vector((0, 0, 0.05)), 0.03, 0.03, verts=10), brass, rig, tar.name, "cane_tip")
+
+
+BUILDERS = {"durag": durag, "bandana": bandana, "cap": cap, "capback": lambda r, b, c: cap(r, b, c, back=True), "joint": joint, "skull": skull, "girl": girl, "old": old}
 
 for name in VARIANTS:
     rig, body = load()
