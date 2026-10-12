@@ -62,10 +62,10 @@ static func cocoon(radius: float, seed := 3) -> Node3D:
     rng.seed = seed
     var ball := Node3D.new()
     ball.name = "Cocoon"
-    for k in 46:
+    for k in 90:
         var a := _on_sphere(rng) * radius * rng.randf_range(0.8, 1.15)
         var b := _on_sphere(rng) * radius * rng.randf_range(0.8, 1.15)
-        thread(ball, a, b, radius * 0.012)
+        thread(ball, a, b, radius * 0.007)
     return ball
 
 
