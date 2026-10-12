@@ -7,27 +7,30 @@ The station is placed by this scene beside the top street (h0_4, halfway along, 
 forecourt onto the street). Its grass is cleared (blades hidden, collision removed for the spider
 and the cars).
 
-What happens
+What happens (mission 2, lines M2-11 to M2-22)
 ------------
-1. Cinema bars slide in. The hero's car (a red Pimpmobile) comes along the street and passes in
-   front of the station.
+1. Cinema bars slide in. Web Smith's car (a red Pimpmobile, clearer windows) comes along the
+   street, Bug Smoke beside him and two of the gang in the back, and passes the station.
 2. It turns in and rolls up to the pumps, head-on to the camera.
-3. He gets out by the driver's door, walks to the pump island and fills up ("fuel" sound slot).
-4. A girl spider (the girl variant: heels, lashes, bow) walks out of the shop toward him.
-5. Their eyes meet: close on her, close on him.
-6. Side two-shot: his one line (line_1), she giggles (giggle).
-7. The camera settles behind him and becomes the play camera. The bars slide out and the radar
-   comes back. The car stays at the pump as a parked car: F gets back in.
-
-No text and no radar on screen during the scene. Traffic is frozen while it plays, and cars near
-the station are moved elsewhere first. The hero's car is one of the traffic cars, taken off the
-traffic and parked at the end.
+3. He gets out by the driver's door, walks to the pump island and fills up ("fuel" sound).
+4. A weaver (the girl variant: heels, lashes, bow) walks out of the shop.
+5. Through the windscreen: Bug Smoke, "look at that fine weaver" (M2-11). Close on Web Smith:
+   "she a 8... Imma show you how it's done" (M2-12). Bug Smoke: "Go 'head, Casanova" (M2-13).
+6. He walks over to her on the open side of the forecourt. Two-shot: "Ayo, shawty" (M2-14),
+   "...What." (M2-15). Close-ups back and forth (M2-16 to M2-19). Two-shot: "Gimme one minute"
+   (M2-20), "One minute. Go." (M2-21).
+7. Through the windscreen: Bug Smoke whispers "he cookin'... or he finna get cooked" (M2-22).
+8. The camera settles behind him and becomes the play camera (the weaving gameplay). The car stays
+   at the pump as a parked car, the gang inside: F gets back in. The closing scene is
+   m2_turned_down_cutscene.
 
 Lines and voices
 ----------------
-The lines are not written yet. Each one is a timed slot (LINES at the top of gas_cutscene.gd:
-who speaks and for how long). Drop a file in voices/ named fuel, line_1 or giggle (.ogg, .wav or
-.mp3) and it plays in its slot. A longer recording is waited for: the slot stretches to its length.
+Each line is a numbered line of the script (Game Jam: dialogues/script-v2.md). Its recording is
+played from experiments/voices/, found by its number (M2-11 to M2-22, see voice_lines.gd).
+Without the file the line lasts its fallback time in silence (LINES / lines at the top of the
+script). With it, the line lasts as long as the recording.
+The pump is a sound, not a line: a file named fuel (.ogg, .wav or .mp3) in this folder's voices/.
 
 Tuning
 ------
@@ -41,7 +44,8 @@ gas_cutscene.gd      the scene: station placement and grass, car drive, hero, gi
                      bars, hand-over to play_game.gd (car parked as play_game.parked)
 gas_game.gd/.tscn    play_game.tscn + the cutscene
 models/gas_station.glb  BUG OIL station (from the rounded buildings set)
-models/spider_girl.glb  the girl jumping spider variant (from the Game Jam asset set)
+models/spider_girl.glb  the girl jumping spider variant (from the Game Jam asset set), the weaver
+                     until her own design is in. The gang uses the sunset scene's models.
 Uses unchanged: play_game.gd (yaw, pitch, prompt, parked, _update_camera), player_car.gd,
 spider_player.gd (move_input, heading, model, set_active), sunny_forest.gd (camera, minimap,
 traffic, road_network, grass blades and collision), traffic.gd (cars, _place, _release).

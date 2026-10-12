@@ -567,7 +567,10 @@ func _run() -> void:
         return
 
     # 8. Bug Smoke: quit whining, we gon' be aight... (from his other side, the blunt out of frame)
-    var on_pal_2 := pal - out_pal * 0.042 - out_pal.cross(UP) * 0.008 + UP * 0.010
+    var pal_side := out_pal.cross(UP)
+    if pal_side.dot(hero - pal) > 0.0:
+        pal_side = -pal_side
+    var on_pal_2 := pal - out_pal * 0.04 + pal_side * 0.016 + UP * 0.012
     _cam_shot(on_pal_2, on_pal_2 + out_pal * 0.004, func(_k): return pal - out_pal * 0.01 + UP * 0.008, 3.0, 0.0)
     await _say("M2-08")
     if _done:

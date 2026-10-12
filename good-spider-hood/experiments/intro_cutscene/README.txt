@@ -1,31 +1,29 @@
-INTRO CUTSCENE
-==============
+INTRO CUTSCENE (MISSION 1, OPENING)
+===================================
 The first cutscene, played in real time on the sunny forest streets with the real models, then
 straight into the third-person play mode. Run intro_game.tscn (F6), or make it the main scene.
 About 30 seconds. Escape skips it.
 
-What happens
+What happens (mission 1, lines M1-01 to M1-08)
 ------------
-1. Cinema bars slide in. The camera follows the jumping spider up Spider Hood Boulevard
-   (main_entry) from behind.
+1. Cinema bars slide in. The camera follows Web Smith up Spider Hood Boulevard (main_entry) from
+   behind.
 2. He stops at the next crossing (n3_1) and waits to cross, looking down the cross street.
 3. The Tisseuses' lowrider (the Pimpmobile at traffic size, painted purple, clear windows) comes
    along the cross street (h1_1 .. h1_4) head-on to the camera and stops in front of him.
-4. Over his shoulder: the three Tisseuses in the car look at him (lines 1 and 2).
-5. Reverse shot from the car: the hero (line 3).
-6. Wide shot: they laugh, the car bounces on its hydraulics, then drives off and blows up the
-   dead leaves.
-7. He turns back down the boulevard, walks past the camera, and the camera slides behind him and
-   becomes the play camera. The bars slide out and the radar comes back.
-
-No text and no radar on screen during the scene. Traffic is frozen while it plays, and cars near the
-crossing are moved elsewhere first.
+4. Over his shoulder: WS1 (the driver) and WS2 (beside her) mock him (M1-01 to M1-03).
+5. Reverse shot from the car: he talks back (M1-04). Wide: "You, spida." They laugh (M1-05).
+6. Close on him: he can weave (M1-06). Over his shoulder: "Show us then" (M1-07).
+7. He turns his back on them and walks off, "Keep your eight eyes open" (M1-08); the camera slides
+   behind him and becomes the play camera. The lowrider stays parked at the crossing: they watch
+   him try (the weaving gameplay). The closing scene is m1_end_cutscene.
 
 Lines and voices
 ----------------
-The lines are not written yet. Each one is a timed slot (LINES at the top of intro_cutscene.gd:
-who speaks and for how long). Drop a voice file in voices/ named line_1, line_2, line_3 or laugh
-(.ogg, .wav or .mp3) and it plays in its slot. A longer recording is waited for: the slot stretches to its length.
+Each line is a numbered line of the script (Game Jam: dialogues/script-v2.md). Its recording is
+played from experiments/voices/, found by its number (M1-01 to M1-08, see voice_lines.gd).
+Without the file the line lasts its fallback time in silence (LINES / lines at the top of the
+script). With it, the line lasts as long as the recording.
 
 Files
 -----

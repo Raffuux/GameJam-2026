@@ -129,10 +129,10 @@ func _run() -> void:
         return
     actors.girl.node.visible = false
     # he faces along the rock, so the play camera behind him is not inside it
-    _place_hero(spider.global_position, side)
+    _place_hero(spider.global_position, -side)
     _finish(false)
 
 
 func _on_skip() -> void:
     actors.girl.node.visible = false
-    _place_hero(hero_spot + side * 0.02, side)
+    _place_hero(hero_spot + side * 0.02, -side)

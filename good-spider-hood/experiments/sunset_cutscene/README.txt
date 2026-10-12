@@ -4,29 +4,28 @@ The second cutscene, played in real time in the clearing at the dead end of the 
 (rock_a_end), then straight into the third-person play mode. Run sunset_game.tscn (F6).
 About 35 seconds. Escape skips it.
 
-What happens
+What happens (mission 2, lines M2-01 to M2-10)
 ------------
-1. Golden hour. Cinema bars slide in. The camera pushes in down the lane on the crew sitting in a
-   circle: the jumping spider (the player) with a joint in his mouth, and five friends: durag, cap,
-   bandana, girl, skull.
-2. Close on the hero smoking, the sunset behind him: a long pull, the tip flares, smoke.
-3. Wide: his friend in the durag tells him to stop sleeping on it and pass it (line_1). He turns
-   and passes it over; they laugh (laugh_1).
-4. The camera rises above the grass: in fast motion (about 4 s) the sun sets behind the trees and
-   the moon rises.
-5. Back on the crew at night, each friend with a joint of a different size, laughing (laugh_2).
-6. The camera settles behind the hero and becomes the play camera. The bars slide out and the
-   radar comes back.
-
-It stays night afterwards (moonlight). The crew stays sitting in the clearing. No text and no
-radar on screen during the scene. Traffic is frozen while it plays, and cars near the clearing are
-moved elsewhere first.
+1. Golden hour. Cinema bars slide in. The camera pushes in down the lane on the gang sitting in a
+   circle: Web Smith (the player) and Bug Smoke (the durag), a blunt in his mouth, with four
+   friends (cap, bandana, girl, skull).
+2. Two-shot: Bug Smoke gives him grief for the web (M2-01); the gang laughs (M2-02).
+3. Close-ups, back and forth: weaving is his dream (M2-03); they are jumping spiders, not orb
+   weavers (M2-04); he wishes he had a chance (M2-05).
+4. Two-shot: "That's just life" (M2-06). Bug Smoke passes him the blunt (it arcs over).
+5. He worries how they'll eat if they're all high (M2-07); "Quit whinin'" (M2-08). A long pull.
+6. "...'cause you drivin'" (M2-09). He coughs, "Shit." (M2-10). They laugh.
+7. The camera rises above the grass: in fast motion the sun sets and the moon rises.
+8. Back on the gang at night, each friend with a joint, laughing. The camera settles behind the
+   hero and becomes the play camera.
 
 Lines and voices
 ----------------
-The lines are not written yet. Each one is a timed slot (LINES at the top of sunset_cutscene.gd:
-who speaks and for how long). Drop a voice file in voices/ named line_1, laugh_1 or laugh_2
-(.ogg, .wav or .mp3) and it plays in its slot. A longer recording is waited for: the slot stretches to its length.
+Each line is a numbered line of the script (Game Jam: dialogues/script-v2.md). Its recording is
+played from experiments/voices/, found by its number (M2-01 to M2-10, see voice_lines.gd).
+These ten are not recorded yet: drop M2-01_bug-smoke.mp3 and the others in experiments/voices/.
+Without the file the line lasts its fallback time in silence (LINES / lines at the top of the
+script). With it, the line lasts as long as the recording.
 
 Tuning
 ------
