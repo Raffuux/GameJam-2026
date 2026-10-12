@@ -671,17 +671,20 @@ func _bars(show: bool, dur: float) -> void:
 
 
 ## A line's slot: whoever speaks bobs a little (everyone for a laugh), and the voice plays if
-## the file exists.
+## the file exists. The slot lasts its LINES time, or the recording's length if that is longer.
 func _say(id: String) -> void:
     var line: Array = LINES[id]
+    var length: float = line[1]
     for ext in [".ogg", ".wav", ".mp3"]:
         if ResourceLoader.exists(VOICE_PATH % id + ext):
             voice.stream = load(VOICE_PATH % id + ext)
             voice.play()
+            # a longer recording keeps the shot going until it ends
+            length = maxf(length, voice.stream.get_length())
             break
     _speaker = line[0]
     _laugh = 1.0 if line[0] == -1 else 0.0
-    await _wait(line[1])
+    await _wait(length)
     _speaker = -2
     _laugh = 0.0
     if not _done:

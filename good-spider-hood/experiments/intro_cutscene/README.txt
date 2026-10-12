@@ -25,7 +25,7 @@ Lines and voices
 ----------------
 The lines are not written yet. Each one is a timed slot (LINES at the top of intro_cutscene.gd:
 who speaks and for how long). Drop a voice file in voices/ named line_1, line_2, line_3 or laugh
-(.ogg, .wav or .mp3) and it plays in its slot. If a voice is longer, raise its duration in LINES.
+(.ogg, .wav or .mp3) and it plays in its slot. A longer recording is waited for: the slot stretches to its length.
 
 Files
 -----

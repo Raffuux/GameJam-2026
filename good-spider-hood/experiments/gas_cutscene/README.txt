@@ -27,7 +27,7 @@ Lines and voices
 ----------------
 The lines are not written yet. Each one is a timed slot (LINES at the top of gas_cutscene.gd:
 who speaks and for how long). Drop a file in voices/ named fuel, line_1 or giggle (.ogg, .wav or
-.mp3) and it plays in its slot. If it is longer, raise its duration in LINES.
+.mp3) and it plays in its slot. A longer recording is waited for: the slot stretches to its length.
 
 Tuning
 ------
