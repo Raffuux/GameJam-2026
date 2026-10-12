@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jardin des assets</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #6b7479; overflow: hidden; font-family: system-ui, sans-serif; }
+      #app { position: fixed; inset: 0; }
+      #panel {
+        position: fixed; top: 12px; left: 12px; max-height: calc(100% - 24px); overflow-y: auto;
+        background: rgba(24, 32, 18, 0.82); color: #f0f4e4; border-radius: 10px; padding: 10px 12px; width: 260px;
+        font-size: 13px; box-sizing: border-box;
+      }
+      #panel h1 { font-size: 15px; margin: 0 0 2px; }
+      #panel p { margin: 0 0 8px; color: #c4d1ad; font-size: 12px; }
+      #panel h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #a9c46c; margin: 10px 0 4px; }
+      #panel button {
+        display: block; width: 100%; text-align: left; background: none; border: 0; color: inherit; font: inherit;
+        padding: 3px 6px; border-radius: 5px; cursor: pointer;
+      }
+      #panel button:hover, #panel button:focus-visible { background: rgba(255, 255, 255, 0.12); outline: none; }
+      #panel button.active { background: #a9c46c; color: #18200f; }
+      #panel .size { float: right; opacity: 0.6; font-variant-numeric: tabular-nums; }
+      @media (max-width: 520px) { #panel { width: auto; right: 12px; max-height: 38%; } }
+      #app::after { content: ''; position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(10, 8, 6, 0.55) 100%); }
+</style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <nav id="panel">
+      <h1>Jardin des assets</h1>
+      <p>Vue à hauteur d'araignée. 1 unité = 1 cm. Clique un asset pour zoomer.</p>
+      <div id="list"></div>
+    </nav>
+    <script type="module" src="/src/preview.js"></script>
+  </body>
+</html>
