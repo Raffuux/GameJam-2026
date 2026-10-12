@@ -1,19 +1,19 @@
 extends Node3D
-## First cutscene, played in real time on the sunny forest streets with the real models.
-## The jumping spider walks up Spider Hood Boulevard and waits at the next crossing. Three Tisseuses
-## pull up in a purple lowrider, laugh at him because he cannot weave, and drive off. He turns
-## back, passes the camera, and the camera settles behind him as the play-mode camera.
+## Mission 1, opening cutscene, played in real time on the sunny forest streets with the real models.
+## Web Smith walks up Spider Hood Boulevard and waits at the next crossing. The Tisseuses pull up in
+## a purple lowrider and mock him because he jumps instead of weaving (script lines M1-01 to M1-08).
+## He says he can weave, turns his back on them and walks off to show them, and the camera settles
+## behind him as the play-mode camera. The lowrider stays parked at the crossing: they watch.
 ##
 ## Cinema bars slide in at the start and out at the end. No text and no radar on screen.
-## The lines are not written yet: each one is a timed slot, and a voice file dropped in
-## voices/ (see LINES) plays in it. Escape skips.
+## Each line plays its recording from experiments/voices/ (see LINES). Escape skips.
 
 signal finished
 
 const RIDER_MODEL := "res://experiments/intro_cutscene/models/spider_tisseuses.glb"
 const CAR_SCENE := "res://assets/vehicles/pimpmobile/pimpmobile_glass.tscn"
 const TRAFFIC = preload("res://experiments/sunny_forest/roads/traffic.gd")
-const VOICE_PATH := "res://experiments/intro_cutscene/voices/%s"
+const VOICES = preload("res://experiments/voices/voice_lines.gd")
 const UP := Vector3.UP
 
 ## Where it happens: the hero comes up main_entry and waits at the n3_1 crossing, the car comes along
@@ -25,12 +25,17 @@ const BAR_RATIO := 0.12
 ## Traffic cars closer than this to the crossing are moved away before the scene starts.
 const CLEAR_RADIUS := 1.2
 
-## [voice file (without extension), who speaks (0 driver, 1 passenger, 2 back seat, -1 all), seconds]
-const LINES := {
-    "line_1": [0, 1.6],
-    "line_2": [1, 2.2],
-    "line_3": [2, 2.2],
-    "laugh": [-1, 2.4],
+## [who speaks (0 WS1 the driver, 1 WS2 the passenger, -3 the hero), seconds if the recording is missing]
+## The third Tisseuse, in the back, only laughs.
+var lines := {
+    "M1-01": [0, 3.1],
+    "M1-02": [1, 3.2],
+    "M1-03": [0, 3.7],
+    "M1-04": [-3, 2.9],
+    "M1-05": [1, 1.9],
+    "M1-06": [-3, 2.6],
+    "M1-07": [1, 3.2],
+    "M1-08": [-3, 4.0],
 }
 
 var game: Node3D        # play_game.gd
@@ -64,6 +69,9 @@ var _car_prev := 0.0
 var car_speed := 0.0
 var hop := 0.0
 var _speaker := -2
+var _laugh := 0.0
+## The lowrider stays parked where it stopped when the scene ends.
+var keep_car := true
 
 var leaves: Array = []
 var t := 0.0
@@ -339,62 +347,74 @@ func _run() -> void:
     if _done:
         return
 
-    # 4. Their eyes meet. The Tisseuses turn to him and mock him.
+    # 4. Their eyes meet. The Tisseuses look him over and mock him (WS1 drives, WS2 beside her).
     _turn_hero(F, 0.4)
-    hop = 0.25
+    hop = 0.15
     var shoulder := curb - F * 0.07 - R * 0.03 + UP * 0.042
-    _cam_shot(shoulder, shoulder + F * 0.01, func(_k): return car.global_position.lerp(spider.global_position, 0.3) + UP * 0.014, 6.0, 0.0)
-    await _wait(0.8)
-    await _say("line_1")
-    if _done:
-        return
-    await _say("line_2")
-    if _done:
-        return
+    var on_car := func(_k): return car.global_position.lerp(spider.global_position, 0.3) + UP * 0.014
+    _cam_shot(shoulder, shoulder + F * 0.01, on_car, 9.0, 0.0)
+    await _wait(0.6)
+    for id in ["M1-01", "M1-02", "M1-03"]:
+        await _say(id)
+        if _done:
+            return
 
-    # 5. Reverse shot from the car: the hero, small, looking up at them.
+    # 5. Reverse shot from the car: the hero, small, looking up at them, talks back.
     var from_car := car.global_position + (curb - car.global_position).normalized() * 0.03 + UP * 0.028 + D * 0.02
     _cam_shot(from_car, from_car + UP * 0.003, func(_k): return spider.global_position + UP * 0.008, 3.0, 0.0)
-    await _wait(0.3)
-    await _say("line_3")
+    await _wait(0.2)
+    await _say("M1-04")
     if _done:
         return
 
-    # 6. Wide shot: they laugh, the car jumps on its hydraulics.
+    # 6. Wide shot: "You, spida." They laugh at him.
     # from the far corner of the crossing, on the road so no grass blade gets in the way
     var wide := J + F * 0.03 - D * 0.085 + UP * 0.026
-    _cam_shot(wide, wide + D * 0.012, func(_k): return (car.global_position + spider.global_position) * 0.5 + UP * 0.01, 5.0, 0.0)
-    hop = 1.0
-    for r in riders:
-        for ap in r.find_children("*", "AnimationPlayer", true, false):
-            ap.speed_scale = 2.5
-    await _say("laugh")
-    if _done:
-        return
-    for r in riders:
-        for ap in r.find_children("*", "AnimationPlayer", true, false):
-            ap.speed_scale = 0.0
-
-    # 7. They drive off in a swirl of leaves.
-    hop = 0.6
-    _drive_car(car_s, car_s + 1.6, 4.5, Tween.EASE_IN, Tween.TRANS_QUAD)
-    await _wait(1.6)
+    _cam_shot(wide, wide + D * 0.012, func(_k): return (car.global_position + spider.global_position) * 0.5 + UP * 0.01, 4.0, 0.0)
+    _laughing(true)
+    await _say("M1-05")
+    _laughing(false)
     if _done:
         return
 
-    # 8. He turns back and leaves: he walks past the camera, which turns to follow him.
+    # 7. Close and low on the hero: he says he can weave.
+    var near := spider.global_position + (car.global_position - spider.global_position).normalized() * 0.045 + D * 0.014 + UP * 0.013
+    _cam_shot(near, near + UP * 0.002, func(_k): return spider.global_position + UP * 0.009, 3.0, 0.0)
+    await _say("M1-06")
+    if _done:
+        return
+
+    # 8. Over his shoulder again: the passenger dares him.
+    _cam_shot(shoulder + R * 0.01, shoulder + F * 0.008, on_car, 3.4, 0.0)
+    await _say("M1-07")
+    if _done:
+        return
+
+    # 9. He turns his back on them and says it over his shoulder as he goes off to weave. The
+    # lowrider stays parked at the crossing: they watch him try.
     hop = 0.0
     var away := curb - F * 0.5
     var cam_spot := curb - F * 0.2 - R * 0.025 + UP * 0.01
     _cam_shot(cam_spot, cam_spot - R * 0.004, func(_k): return spider.global_position + UP * 0.008, 6.0, 0.25)
     await _turn_hero(-F, 0.6)
     _walk_hero(away)
-    await _wait(3.2)
+    await _say("M1-08")
+    if _done:
+        return
+    await _wait(0.8)
     if _done:
         return
 
-    # 9. The camera slips behind him and becomes the play camera.
+    # 10. The camera slips behind him and becomes the play camera.
     _finish(false)
+
+
+## The crew's laugh: they shake in their seats.
+func _laughing(on: bool) -> void:
+    for r in riders:
+        for ap in r.find_children("*", "AnimationPlayer", true, false):
+            ap.speed_scale = 2.5 if on else 0.0
+    _laugh = 1.0 if on else 0.0
 
 
 # ---------- The hero ----------
@@ -475,7 +495,7 @@ func _update_car(dt: float) -> void:
         var tilt := Basis(Vector3.RIGHT, sin(t * 7.5) * 0.06 * hop)
         node.transform = Transform3D(tilt * rest.basis, tilt * rest.origin + Vector3(0, bounce * 0.18, 0))
     for k in riders.size():
-        var talk := 1.0 if _speaker == k or _speaker == -1 else 0.0
+        var talk := 1.0 if _speaker == k or _speaker == -1 else _laugh
         var seat: Vector3 = riders[k].get_meta("seat")
         riders[k].position = seat + UP * (bounce * 0.18 * TRAFFIC.CAR_SCALE + absf(sin(t * 11.0 + k)) * 0.0015 * maxf(hop, talk))
     if car_s > lane_arc[-1] - 0.05:
@@ -559,17 +579,16 @@ func _bars(show: bool, dur: float) -> void:
     _tween_prop(bar_bottom, "offset_top", -bar_h if show else 0.0, dur).set_trans(Tween.TRANS_SINE)
 
 
-## A line's slot: the Tisseuse who speaks bobs a little, and her voice plays if the file exists.
+## A line: the Tisseuse who speaks bobs a little, and its recording plays if the file is there.
 func _say(id: String) -> void:
-    var line: Array = LINES[id]
+    var line: Array = lines[id]
     var length: float = line[1]
-    for ext in [".ogg", ".wav", ".mp3"]:
-        if ResourceLoader.exists(VOICE_PATH % id + ext):
-            voice.stream = load(VOICE_PATH % id + ext)
-            voice.play()
-            # a longer recording keeps the shot going until it ends
-            length = maxf(length, voice.stream.get_length())
-            break
+    var stream := VOICES.stream(id)
+    if stream:
+        voice.stream = stream
+        voice.play()
+        # the recording sets the line's length
+        length = stream.get_length()
     _speaker = line[0]
     await _wait(length)
     _speaker = -2
@@ -591,9 +610,15 @@ func _finish(skipped: bool) -> void:
     voice.stop()
     _walk_target = null
     spider.move_input = Vector3.ZERO
+    _laughing(false)
+    hop = 0.0
     if skipped:
         fade.color.a = 0.0
-        car.visible = false
+        if keep_car:
+            _place_car(_lane_closest(curb))
+            car.visible = true
+        else:
+            car.visible = false
         _place_hero(curb - F * 0.3, -F)
     # the play camera sits behind the spider, facing the way it faces
     game.yaw = spider.heading
@@ -616,7 +641,8 @@ func _finish(skipped: bool) -> void:
     game.set_process_unhandled_input(true)
     finished.emit()
     ui.queue_free()
-    car.queue_free()
+    if not keep_car:
+        car.queue_free()
 
 
 func _input(event: InputEvent) -> void:
