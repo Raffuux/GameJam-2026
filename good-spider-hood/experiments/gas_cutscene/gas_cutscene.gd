@@ -1,22 +1,31 @@
 extends Node3D
-## Third cutscene, played in real time at the BUG OIL gas station, placed by this scene beside the
-## top street of the sunny forest (h0_4).
-## The hero drives along the street, passes the station, turns in and stops at the pumps. He gets
-## out to fill up; a beautiful spider (the girl variant) walks out of the shop; their eyes meet,
-## he says one line, she giggles, and the camera settles behind him as the play-mode camera. The
-## car stays at the pump as a parked car he can get back into.
+## Mission 2, second cutscene (script lines M2-11 to M2-22), played in real time at the BUG OIL gas
+## station, placed by this scene beside the top street of the sunny forest (h0_4).
+## Web Smith drives along the street, high, Bug Smoke beside him and two of the gang in the back. He
+## passes the station, turns in and stops at the pumps, gets out and fills up. A weaver walks out of
+## the shop. Bug Smoke, from the car, tells him to look; Web Smith goes to show them how it's done.
+## He hollers at her, she shuts him down ("Weavers don't talk to jumpers"), he bets he can spin her
+## something in one minute, she says go, and Bug Smoke whispers he's cooking or about to get cooked.
+## The camera settles behind him as the play-mode camera (the weaving gameplay). The car stays at
+## the pump as a parked car he can get back into, the gang inside.
 ##
 ## Cinema bars slide in at the start and out at the end. No text and no radar on screen.
-## The lines are not written yet: each one is a timed slot, and a voice file dropped in
-## voices/ (see LINES) plays in it. Escape skips.
+## Each line plays its recording from experiments/voices/ (see lines); the pump sound is a file
+## named fuel in this scene's voices/ folder. Escape skips.
 
 signal finished
 
 const STATION_MODEL := "res://experiments/gas_cutscene/models/gas_station.glb"
 const GIRL_MODEL := "res://experiments/gas_cutscene/models/spider_girl.glb"
+## The gang in the car: Bug Smoke (the durag) in front, two friends in the back.
+const GANG_MODELS := ["res://experiments/sunset_cutscene/models/spider_durag.glb",
+    "res://experiments/sunset_cutscene/models/spider_bandana.glb",
+    "res://experiments/sunset_cutscene/models/spider_skull.glb"]
+## Their seats, in car metres from its middle: x right, y up, z forward.
+const GANG_SEATS := [Vector3(0.0085, 0.012, -0.002), Vector3(-0.007, 0.013, -0.016), Vector3(0.007, 0.013, -0.016)]
+const VOICES = preload("res://experiments/voices/voice_lines.gd")
 const TRAFFIC = preload("res://experiments/sunny_forest/roads/traffic.gd")
 const PLAYER_CAR = preload("res://experiments/sunny_forest/play/player_car.gd")
-const VOICE_PATH := "res://experiments/gas_cutscene/voices/%s"
 const UP := Vector3.UP
 
 ## Where the station stands: beside this street, this far along it, on its south side.
@@ -36,19 +45,31 @@ const PAINT := "crimson"
 ## Spots on the station, in its centimetres (x right, z toward the street).
 const CAR_STOP := Vector2(0.0, 3.6)       # the car's middle, between the two pump islands
 const HERO_SPOT := Vector2(-3.0, -0.6)    # in front of the left pump island
+const TALK_SPOT := Vector2(-6.2, 0.4)     # where he stops to talk to her
 const PUMP := Vector2(-4.0, 2.2)
 const SHOP_DOOR := Vector2(-5.5, -5.0)
-const GIRL_SPOT := Vector2(-6.0, -2.6)
+const GIRL_SPOT := Vector2(-10.0, -0.8)   # out on the open side of the forecourt
 const WATCH := Vector2(-13.0, 3.0)        # camera spots: the forecourt's open left corner
-const TWO_SHOT := Vector2(-14.0, -0.2)
 const PLAY_FROM := Vector2(-13.0, -0.4)   # the play camera starts out from this side
 
-## [voice file (without extension), who speaks ("hero", "girl"), seconds]
-const LINES := {
-    "fuel": ["", 2.4],          # the pump running (a sound, not a line)
-    "line_1": ["hero", 2.8],    # his one line to her
-    "giggle": ["girl", 1.6],
+## [who speaks ("hero", "girl", "bug" for Bug Smoke), seconds if the recording is missing]
+var lines := {
+    "M2-11": ["bug", 3.6],
+    "M2-12": ["hero", 5.1],
+    "M2-13": ["bug", 3.9],
+    "M2-14": ["hero", 2.4],
+    "M2-15": ["girl", 1.6],
+    "M2-16": ["hero", 5.6],
+    "M2-17": ["girl", 2.8],
+    "M2-18": ["hero", 5.1],
+    "M2-19": ["girl", 3.1],
+    "M2-20": ["hero", 6.5],
+    "M2-21": ["girl", 2.8],
+    "M2-22": ["bug", 3.2],
 }
+## The pump running: a sound file named fuel (.ogg, .wav or .mp3) in this folder, and its length if missing.
+const FUEL_SOUND := "res://experiments/gas_cutscene/voices/fuel"
+const FUEL_TIME := 2.4
 
 var game: Node3D        # play_game.gd
 var world: Node3D       # sunny_forest.gd
@@ -72,6 +93,7 @@ var path := Curve2D.new()
 var car_s := 0.0
 var _car_prev := 0.0
 var in_car := true
+var gang: Array = []              # [holder, model] for Bug Smoke and the two in the back
 
 var girl: Node3D
 var girl_model: Node3D
@@ -110,6 +132,7 @@ func play(p_game: Node3D) -> void:
     _build_ui()
     _build_path()
     _build_girl()
+    _build_gang()
     _run()
 
 
@@ -274,6 +297,43 @@ func _build_girl() -> void:
         girl_anim.play("idle")
 
 
+## Bug Smoke and two of the gang ride along. They sit in the car (children of its drawn copy, so
+## they stay in it once it is parked) and the windows are made clearer to see them.
+func _build_gang() -> void:
+    if car == null:
+        return
+    for node in car.find_children("*", "", true, false):
+        if "glass_opacity" in node:
+            node.set("glass_opacity", 0.25)
+        if node is MeshInstance3D:
+            for k in node.get_surface_override_material_count():
+                var mat: Material = node.get_active_material(k)
+                if mat is ShaderMaterial and mat.shader and "glass_opacity" in mat.shader.code:
+                    mat.set_shader_parameter("glass_opacity", 0.25)
+    for k in GANG_MODELS.size():
+        var holder := Node3D.new()
+        holder.name = "Gang%d" % k
+        car.add_child(holder)
+        var seat: Vector3 = GANG_SEATS[k]
+        holder.position = Vector3(seat.x, seat.y, -seat.z) / TRAFFIC.CAR_SCALE + Vector3(0, 0, -TRAFFIC.CENTER_AHEAD)
+        var model: Node3D = load(GANG_MODELS[k]).instantiate()
+        model.scale = Vector3.ONE * MODEL_SCALE * 0.55 / TRAFFIC.CAR_SCALE
+        holder.add_child(model)
+        for light in model.find_children("*", "OmniLight3D", true, false):
+            light.free()
+        for ap in model.find_children("*", "AnimationPlayer", true, false):
+            ap.play("idle")
+            ap.speed_scale = 0.6
+        gang.append([holder, model])
+
+
+func _update_gang() -> void:
+    for k in gang.size():
+        var model: Node3D = gang[k][1]
+        var talk := 1.0 if k == 0 and _speaker == "bug" else 0.0
+        model.position.y = absf(sin(t * 10.0 + k)) * 0.0015 / TRAFFIC.CAR_SCALE * talk
+
+
 func _set_girl(p: Vector3, facing: Vector3) -> void:
     girl.global_position = Vector3(p.x, 0.0, p.z)
     if facing.length() > 0.0001:
@@ -310,51 +370,123 @@ func _run() -> void:
     if _done:
         return
     await _turn_hero(at(PUMP) - spider.global_position, 0.4)
-    _say("fuel")
+    _fuel()
     await _wait(1.0)
     if _done:
         return
 
-    # 4. A girl walks out of the shop toward him.
+    # 4. A weaver walks out of the shop.
     girl.visible = true
     _girl_walk_to(at(GIRL_SPOT), 2.6)
-    var h := spider.global_position
-    var g := at(GIRL_SPOT)
     # from the forecourt's open corner, clear of the canopy posts and the trash bags
     _cam_shot(at(WATCH, 3.6), at(WATCH + Vector2(0.5, -0.5), 3.4), func(_k): return girl.global_position.lerp(spider.global_position, 0.4) + UP * 0.008, 3.2, 0.0)
-    await _wait(1.4)
+    await _wait(FUEL_TIME)
     if _done:
         return
+
+    # 5. In the car, Bug Smoke nudges him: look at that fine weaver.
+    var seat := _gang_seat(0)
+    # through the windscreen, from in front of the car
+    var window := seat + _car_ahead() * 0.04 + _car_right() * 0.006 + UP * 0.02
+    _cam_shot(window, window + UP * 0.002, func(_k): return seat + UP * 0.004, 4.0, 0.0)
+    await _say("M2-11")
+    if _done:
+        return
+
+    # 6. Close on Web Smith, staring at her: she a 8. Imma show you how it's done.
+    var h := spider.global_position
+    var g := at(GIRL_SPOT)
     await _turn_hero(g - h, 0.6)
-    await _wait(1.4)
-    if _done:
-        return
-
-    # 5. Their eyes meet: close on her, then on him.
-    var her := g + (h - g).normalized() * 0.034 + UP * 0.022
-    _cam_shot(her, her + UP * 0.001, func(_k): return g + UP * 0.009, 1.8, 0.0)
-    await _wait(1.6)
-    if _done:
-        return
     var him := h + (g - h).normalized() * 0.034 + UP * 0.022
-    _cam_shot(him, him + UP * 0.001, func(_k): return h + UP * 0.009, 1.4, 0.0)
-    await _wait(1.2)
+    _cam_shot(him, him + UP * 0.001, func(_k): return h + UP * 0.009, 5.0, 0.0)
+    await _say("M2-12")
     if _done:
         return
 
-    # 6. Two-shot from the side: his line, her giggle.
+    # 7. Bug Smoke laughs: go 'head, Casanova. Web Smith walks over to her.
+    _cam_shot(window, window - _car_ahead() * 0.004, func(_k): return seat.lerp(spider.global_position, 0.5) + UP * 0.006, 4.0, 0.0)
+    _walk_hero(at(TALK_SPOT))
+    await _say("M2-13")
+    if _done:
+        return
+    await _walk_hero(at(TALK_SPOT))
+    if _done:
+        return
+    await _turn_hero(g - spider.global_position, 0.3)
+    _girl_face_hero(0.8)
+
+    # 8. The two of them, from the side. He hollers at her; she doesn't even look.
+    # the camera stands on the shop's side of the line between them, the street behind them
+    h = spider.global_position
     var mid := (h + g) * 0.5
-    var two := at(TWO_SHOT, 3.0)
-    _cam_shot(two, at(TWO_SHOT + Vector2(1.5, 0.0), 2.8), func(_k): return mid + UP * 0.008, 6.0, 0.0)
-    await _say("line_1")
+    var dir := (g - h).normalized()
+    var across := dir.cross(UP)
+    if across.dot(at(Vector2(0.0, 1.0)) - at(Vector2.ZERO)) < 0.0:
+        across = -across
+    var two := mid - across * 0.04 + UP * 0.026
+    _cam_shot(two, two + across * 0.005, func(_k): return mid + UP * 0.008, 12.0, 0.0)
+    await _say("M2-14")
     if _done:
         return
-    await _say("giggle")
+    await _say("M2-15")
     if _done:
         return
 
-    # 7. The camera settles behind him and becomes the play camera.
+    # 9. Close on him, smooth; close on her, unimpressed. Back and forth. Each close-up is from
+    # in front of the one speaking, off to one side, so the other one is not in the way.
+    var her := g - dir * 0.02 + across * 0.022 + UP * 0.016
+    him = h + dir * 0.02 - across * 0.022 + UP * 0.016
+    var on_her := func(_k): return g + UP * 0.009
+    var on_him := func(_k): return h + UP * 0.009
+    _cam_shot(him, him + UP * 0.001, on_him, 5.6, 0.0)
+    await _say("M2-16")
+    if _done:
+        return
+    _cam_shot(her, her + UP * 0.001, on_her, 2.8, 0.0)
+    await _say("M2-17")
+    if _done:
+        return
+    _cam_shot(him, him - UP * 0.001, on_him, 5.2, 0.0)
+    await _say("M2-18")
+    if _done:
+        return
+    _cam_shot(her, her - UP * 0.001, on_her, 3.2, 0.0)
+    await _say("M2-19")
+    if _done:
+        return
+
+    # 10. Two-shot: who said he ain't a weaver? Gimme one minute. She: one minute, go.
+    _cam_shot(two + across * 0.008 + UP * 0.002, two + across * 0.003 - dir * 0.003, func(_k): return mid + UP * 0.008, 10.0, 0.0)
+    await _say("M2-20")
+    if _done:
+        return
+    await _say("M2-21")
+    if _done:
+        return
+
+    # 11. In the car, Bug Smoke whispers to the gang.
+    _cam_shot(window, window + _car_ahead() * 0.003, func(_k): return seat.lerp(_gang_seat(1), 0.4) + UP * 0.004, 3.4, 0.0)
+    await _say("M2-22")
+    if _done:
+        return
+
+    # 12. The camera settles behind him and becomes the play camera.
     _finish(false)
+
+
+func _car_ahead() -> Vector3:
+    var a := -car.global_basis.z
+    a.y = 0.0
+    return a.normalized()
+
+
+func _car_right() -> Vector3:
+    return _car_ahead().cross(UP)
+
+
+## Where a gang member sits, on the map.
+func _gang_seat(k: int) -> Vector3:
+    return gang[k][0].global_position if k < gang.size() else car.global_position
 
 
 # ---------- The car ----------
@@ -494,10 +626,17 @@ func _girl_walk_to(to: Vector3, dur: float) -> void:
         girl.rotation.y = lerp_angle(girl.rotation.y, yaw, k), 0.0, 1.0, 0.5)
 
 
+## She turns to face him, where he stands now.
+func _girl_face_hero(dur: float) -> void:
+    var face := spider.global_position - girl.global_position
+    var yaw := girl.rotation.y + angle_difference(girl.rotation.y, atan2(-face.x, -face.z))
+    _tween().tween_property(girl, "rotation:y", yaw, dur).set_trans(Tween.TRANS_SINE)
+
+
 func _update_girl() -> void:
     if girl == null or not girl.visible:
         return
-    # her giggle: a little bounce
+    # she bobs a little when she speaks
     var bounce := absf(sin(t * 12.0)) * 0.0012 if _speaker == "girl" else 0.0
     girl_model.position.y = bounce
 
@@ -540,17 +679,25 @@ func _bars(show: bool, dur: float) -> void:
     _tween_prop(bar_bottom, "offset_top", -bar_h if show else 0.0, dur).set_trans(Tween.TRANS_SINE)
 
 
-## A line's slot: the voice plays if its file exists.
-func _say(id: String) -> void:
-    var line: Array = LINES[id]
-    var length: float = line[1]
+## The pump running, if its sound file is there.
+func _fuel() -> void:
     for ext in [".ogg", ".wav", ".mp3"]:
-        if ResourceLoader.exists(VOICE_PATH % id + ext):
-            voice.stream = load(VOICE_PATH % id + ext)
+        if ResourceLoader.exists(FUEL_SOUND + ext):
+            voice.stream = load(FUEL_SOUND + ext)
             voice.play()
-            # a longer recording keeps the shot going until it ends
-            length = maxf(length, voice.stream.get_length())
-            break
+            return
+
+
+## A line: whoever speaks bobs a little, and its recording plays if the file is there. Without
+## it the line lasts its LINES time, in silence.
+func _say(id: String) -> void:
+    var line: Array = lines[id]
+    var length: float = line[1]
+    var stream := VOICES.stream(id)
+    if stream:
+        voice.stream = stream
+        voice.play()
+        length = stream.get_length()
     _speaker = line[0]
     await _wait(length)
     _speaker = ""
@@ -578,17 +725,17 @@ func _finish(skipped: bool) -> void:
         fade.color.a = 0.0
         if in_car:
             _unseat_hero()
-        _set_girl(at(GIRL_SPOT), at(HERO_SPOT) - at(GIRL_SPOT))
+        _set_girl(at(GIRL_SPOT), at(TALK_SPOT) - at(GIRL_SPOT))
         girl.visible = true
         if girl_anim:
             girl_anim.play("idle")
-        spider.global_position = at(HERO_SPOT)
-        var face := at(GIRL_SPOT) - at(HERO_SPOT)
+        spider.global_position = at(TALK_SPOT)
+        var face := at(GIRL_SPOT) - at(TALK_SPOT)
         spider.heading = atan2(-face.x, -face.z)
         spider.rotation.y = spider.heading
         spider.model.snap_feet()
     # the play camera sits behind the spider, on the forecourt's open side, clear of pumps and posts
-    var look := at(HERO_SPOT) - at(PLAY_FROM)
+    var look := at(TALK_SPOT) - at(PLAY_FROM)
     game.yaw = atan2(-look.x, -look.z)
     game.pitch = -0.22
     var blend := 0.7 if skipped else 2.0
@@ -630,6 +777,7 @@ func _process(dt: float) -> void:
         _update_car()
         _update_camera(dt)
     _update_girl()
+    _update_gang()
 
 
 func _tween() -> Tween:
