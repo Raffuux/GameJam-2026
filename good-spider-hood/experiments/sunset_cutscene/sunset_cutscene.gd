@@ -1,19 +1,19 @@
 extends Node3D
-## Second cutscene, played in real time in the clearing at the end of the rock lane.
-## Sunset. The jumping spider sits with five friends (durag, cap, bandana, girl, skull) and a joint
-## in his mouth. His friend tells him to stop sleeping on it and pass it; he does and they laugh.
-## The sun sets and the moon rises in fast motion, then we are back on the group at night, each with
-## a joint of a different size, still laughing, and the camera settles behind the hero as the
-## play-mode camera. It stays night afterwards.
+## Mission 2, first cutscene (script lines M2-01 to M2-10), played in real time in the clearing at
+## the end of the rock lane. Sunset. Web Smith sits with the gang: Bug Smoke (the durag) and four
+## friends (cap, bandana, girl, skull). Bug Smoke, a blunt in his mouth, gives him grief for the
+## failed web; the gang laughs. Web Smith says weaving is his dream; Bug Smoke tells him they are
+## jumping spiders, not orb weavers, and passes him the blunt. He takes a long pull, coughs: "'cause
+## you drivin'". Then the sun sets and the moon rises in fast motion, everyone has a joint, and the
+## camera settles behind the hero as the play-mode camera. It stays night afterwards.
 ##
 ## Cinema bars slide in at the start and out at the end. No text and no radar on screen.
-## The lines are not written yet: each one is a timed slot, and a voice file dropped in
-## voices/ (see LINES) plays in it. Escape skips.
+## Each line plays its recording from experiments/voices/ (see LINES). Escape skips.
 
 signal finished
 
 const MODELS := "res://experiments/sunset_cutscene/models/spider_%s.glb"
-const VOICE_PATH := "res://experiments/sunset_cutscene/voices/%s"
+const VOICES = preload("res://experiments/voices/voice_lines.gd")
 const UP := Vector3.UP
 const EMBER := Color("ff5a1a")
 const EMBER_HOT := Color("ffd27a")
@@ -30,7 +30,7 @@ const BAR_RATIO := 0.12
 ## [model, accessory, joint length in the last shot (m), 0 = none]
 const CREW := [
     ["hero", "", 0.0],
-    ["durag", "", 0.010],     # the friend who asks for the joint and gets it
+    ["durag", "", 0.0],       # Bug Smoke: he has the blunt at first and passes it to the hero
     ["bandana", "", 0.006],
     ["joint", "cap", 0.0],    # the cap friend; his model has its own big joint, shown in the last shot
     ["girl", "", 0.008],
@@ -38,11 +38,19 @@ const CREW := [
 ]
 const FRIEND := 1
 
-## [voice file (without extension), who speaks (index in CREW, -1 all), seconds]
+## [who speaks (index in CREW: 0 Web Smith, 1 Bug Smoke, -1 the whole gang), seconds if the
+## recording is missing]
 const LINES := {
-    "line_1": [1, 2.6],
-    "laugh_1": [-1, 2.2],
-    "laugh_2": [-1, 3.0],
+    "M2-01": [1, 7.0],
+    "M2-02": [-1, 2.2],
+    "M2-03": [0, 8.0],
+    "M2-04": [1, 6.5],
+    "M2-05": [0, 4.0],
+    "M2-06": [1, 6.0],
+    "M2-07": [0, 4.0],
+    "M2-08": [1, 2.8],
+    "M2-09": [1, 1.8],
+    "M2-10": [0, 1.8],
 }
 
 ## Mouth and head top in model units (the base spider mesh, facing -Z).
@@ -80,7 +88,7 @@ var C := Vector3.ZERO
 var L := Vector3.FORWARD
 
 var crew: Array = []          # per CREW entry: {"node": Node3D holder (the spider itself for the hero), "pos", "facing"}
-var hero_joint: Node3D
+var hero_joint: Node3D        # the blunt: in Bug Smoke's mouth, then the hero's
 var last_joints: Array = []   # shown in the last shot
 var embers: Array = []        # [ember material, joint]
 
@@ -293,8 +301,6 @@ func _build_crew() -> void:
         if CREW[k][0] == "hero":
             _place_hero(pos, facing)
             entry.node = spider
-            hero_joint = _make_joint(0.011)
-            _hold_in_mouth(spider.model, hero_joint, spider)
         else:
             var holder := Node3D.new()
             holder.name = "Friend_" + CREW[k][0]
@@ -308,6 +314,9 @@ func _build_crew() -> void:
                 ap.play("idle")
                 ap.seek(randf() * 1.5, true)
                 ap.speed_scale = 0.7
+            if k == FRIEND:
+                hero_joint = _make_joint(0.011)
+                _hold_in_mouth(model, hero_joint, holder)
             if CREW[k][1] == "cap":
                 _add_cap(model)
             # the forest's toon shading turns any small light into a big flat disc: embers only glow
@@ -493,46 +502,96 @@ func _make_joint(length: float) -> Node3D:
 func _run() -> void:
     var hero: Vector3 = crew[0].pos
     var pal: Vector3 = crew[FRIEND].pos
+    var side := L.cross(UP)
+    var out_pal := _around(FRIEND * 60.0)
+    # close-ups from inside the circle: each face with the sky behind it
+    var on_hero := hero - L * 0.042 + side * 0.008 + UP * 0.010
+    var on_pal := pal - out_pal * 0.042 + out_pal.cross(UP) * 0.008 + UP * 0.010
+    var mid := (hero + pal) * 0.5
+    var two := C - (mid - C).normalized() * 0.03 + UP * 0.03
 
-    # 1. Push in on the group down the lane, the sun low behind the camera.
+    # 1. Push in on the gang down the lane, the sun low behind the camera.
     _tween_prop(fade, "color:a", 0.0, 1.8)
     _bars(true, 1.2)
     var from := C + L * 0.26 + UP * 0.075
     var to := C + L * 0.10 + UP * 0.055
-    _cam_shot(from, to, func(_k): return C + UP * 0.008, 6.0, 0.0)
-    _tween_time(0.0, 0.08, 14.0)
-    await _wait(5.6)
+    _cam_shot(from, to, func(_k): return C + UP * 0.008, 5.0, 0.0)
+    _tween_time(0.0, 0.08, 40.0)
+    await _wait(4.4)
     if _done:
         return
 
-    # 2. The hero smoking, the sunset behind him: a long pull, the tip glows, smoke.
-    var side := L.cross(UP)
-    var close := hero - L * 0.042 + side * 0.008 + UP * 0.010
-    _cam_shot(close, close + L * 0.008, func(_k): return hero - L * 0.01 + UP * 0.008, 4.5, 0.0)
-    await _wait(0.8)
-    _puff(hero_joint, 1.6)
-    await _wait(3.2)
+    # 2. Two-shot: Bug Smoke, blunt in his mouth, gives him grief for the web. The gang laughs.
+    _cam_shot(two, two + UP * 0.003, func(_k): return mid + UP * 0.008, 9.0, 0.0)
+    _puff(hero_joint, 1.4)
+    await _say("M2-01")
+    if _done:
+        return
+    await _say("M2-02")
     if _done:
         return
 
-    # 3. Wide: his friend tells him to stop sleeping on it and pass it. He does, they laugh.
-    var mid := (hero + pal) * 0.5
-    var wide := C - (mid - C).normalized() * 0.03 + UP * 0.03
-    _cam_shot(wide, wide + UP * 0.003, func(_k): return mid + UP * 0.008, 7.0, 0.0)
-    await _wait(0.4)
-    await _say("line_1")
+    # 3. Close on Web Smith, the sunset behind him: weaving is his dream.
+    _cam_shot(on_hero, on_hero + L * 0.008, func(_k): return hero - L * 0.01 + UP * 0.008, 8.0, 0.0)
+    await _say("M2-03")
     if _done:
         return
+
+    # 4. Close on Bug Smoke: they are jumping spiders, not orb weavers.
+    _cam_shot(on_pal, on_pal + out_pal * 0.006, func(_k): return pal - out_pal * 0.01 + UP * 0.008, 7.0, 0.0)
+    await _say("M2-04")
+    if _done:
+        return
+
+    # 5. Web Smith: he just wishes he was given a chance.
+    _cam_shot(on_hero + side * 0.004, on_hero + L * 0.006, func(_k): return hero - L * 0.01 + UP * 0.008, 4.5, 0.0)
+    await _say("M2-05")
+    if _done:
+        return
+
+    # 6. Two-shot: that's just life. Bug Smoke passes him the blunt.
+    _cam_shot(two, two + UP * 0.003, func(_k): return mid + UP * 0.008, 10.0, 0.0)
     await _turn_hero(pal - hero, 0.5)
-    await _pass_joint(crew[FRIEND].model, crew[FRIEND].node)
+    await _say("M2-06")
     if _done:
         return
-    _turn_hero(C - hero, 0.6)
-    await _say("laugh_1")
+    await _pass_joint(spider.model, spider)
     if _done:
         return
 
-    # 4. Fast motion: the sun sets, the moon rises.
+    # 7. He hesitates, blunt in his mouth: how they gonna get food if they all high?
+    _turn_hero(C - hero, 0.6)
+    _cam_shot(on_hero, on_hero + L * 0.006, func(_k): return hero - L * 0.01 + UP * 0.008, 4.5, 0.0)
+    await _say("M2-07")
+    if _done:
+        return
+
+    # 8. Bug Smoke: quit whining, we gon' be aight... (from his other side, the blunt out of frame)
+    var on_pal_2 := pal - out_pal * 0.042 - out_pal.cross(UP) * 0.008 + UP * 0.010
+    _cam_shot(on_pal_2, on_pal_2 + out_pal * 0.004, func(_k): return pal - out_pal * 0.01 + UP * 0.008, 3.0, 0.0)
+    await _say("M2-08")
+    if _done:
+        return
+
+    # 9. A long pull: the tip flares, smoke.
+    _cam_shot(on_hero, on_hero + L * 0.01, func(_k): return hero - L * 0.01 + UP * 0.008, 3.5, 0.0)
+    await _puff(hero_joint, 2.0)
+    if _done:
+        return
+
+    # 10. "...'cause you drivin'." He coughs. The gang laughs.
+    _cam_shot(two, two + UP * 0.002, func(_k): return mid + UP * 0.008, 6.0, 0.0)
+    await _say("M2-09")
+    if _done:
+        return
+    _laugh = 0.6
+    _puff(hero_joint, 1.0)
+    await _say("M2-10")
+    _laugh = 0.0
+    if _done:
+        return
+
+    # 11. Fast motion: the sun sets, the moon rises.
     var high := C + L * 0.05 + UP * 0.6
     var sky_look := high + _around(38.0) * 1.0 + UP * 0.13
     _cam_shot(high, high + UP * 0.02, func(_k): return sky_look, 4.8, 0.0)
@@ -542,21 +601,20 @@ func _run() -> void:
     if _done:
         return
 
-    # 5. Back on the group at night: everyone has a joint now, they laugh.
+    # 12. Back on the gang at night: everyone has a joint now, they laugh.
     for j in last_joints:
         j.visible = true
     var above := C + L * 0.02 + UP * 0.1
     var low := C + L * 0.085 + UP * 0.03
     _cam_shot(above, low, func(_k): return C + UP * 0.006, 5.0, 0.0)
     await _wait(0.6)
-    await _say("laugh_2")
-    if _done:
-        return
-    await _wait(0.8)
+    _laugh = 1.0
+    await _wait(2.6)
+    _laugh = 0.0
     if _done:
         return
 
-    # 6. The camera settles behind the hero and becomes the play camera.
+    # 13. The camera settles behind the hero and becomes the play camera.
     _finish(false)
 
 
@@ -572,7 +630,7 @@ func _turn_hero(dir: Vector3, dur: float) -> void:
     await tw.finished
 
 
-## The joint leaves the hero's mouth and arcs over to his friend's.
+## The blunt leaves Bug Smoke's mouth and arcs over to the hero's.
 func _pass_joint(model: Node3D, holder: Node3D) -> void:
     var start := hero_joint.global_transform
     hero_joint.reparent(self, true)
@@ -580,7 +638,7 @@ func _pass_joint(model: Node3D, holder: Node3D) -> void:
     var target_holder := Node3D.new()
     anchor.add_child(target_holder)
     var face := model.global_transform * Transform3D(Basis(), MOUTH)
-    target_holder.global_transform = Transform3D(face.basis.orthonormalized() * Basis(UP, 0.35) * Basis(Vector3.RIGHT, 0.22), face.origin)
+    target_holder.global_transform = Transform3D(face.basis.orthonormalized() * Basis(UP, -0.35) * Basis(Vector3.RIGHT, 0.22), face.origin)
     var arc := func(k: float) -> void:
         var goal := target_holder.global_transform
         var p := start.origin.lerp(goal.origin, k) + UP * sin(k * PI) * 0.012
@@ -670,18 +728,16 @@ func _bars(show: bool, dur: float) -> void:
     _tween_prop(bar_bottom, "offset_top", -bar_h if show else 0.0, dur).set_trans(Tween.TRANS_SINE)
 
 
-## A line's slot: whoever speaks bobs a little (everyone for a laugh), and the voice plays if
-## the file exists. The slot lasts its LINES time, or the recording's length if that is longer.
+## A line: whoever speaks bobs a little (everyone for a laugh), and its recording plays if the
+## file is there. Without it the line lasts its LINES time, in silence.
 func _say(id: String) -> void:
     var line: Array = LINES[id]
     var length: float = line[1]
-    for ext in [".ogg", ".wav", ".mp3"]:
-        if ResourceLoader.exists(VOICE_PATH % id + ext):
-            voice.stream = load(VOICE_PATH % id + ext)
-            voice.play()
-            # a longer recording keeps the shot going until it ends
-            length = maxf(length, voice.stream.get_length())
-            break
+    var stream := VOICES.stream(id)
+    if stream:
+        voice.stream = stream
+        voice.play()
+        length = stream.get_length()
     _speaker = line[0]
     _laugh = 1.0 if line[0] == -1 else 0.0
     await _wait(length)
@@ -711,10 +767,10 @@ func _finish(skipped: bool) -> void:
         for j in last_joints:
             j.visible = true
         if not _joint_passed:
-            # it ends up with the friend, as if the pass had happened
+            # it ends up with the hero, as if the pass had happened
             hero_joint.queue_free()
             var j := _make_joint(0.011)
-            _hold_in_mouth(crew[FRIEND].model, j, crew[FRIEND].node)
+            _hold_in_mouth(spider.model, j, spider)
         _place_hero(crew[0].pos, -L)
     # the play camera sits behind the spider, facing the way it faces
     game.yaw = spider.heading
